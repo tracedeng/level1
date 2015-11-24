@@ -22,23 +22,20 @@ class Base(RequestHandler):
         self.code = 1   # 模块号(2位) + 功能号(2位) + 错误号(2位)
         self.message = ""
         self.mode = ""
+        self.response = None
 
     def send_to_level2(self, request):
         """
         请求level2服务
         :param request: pb格式请求
-        :return: 0/成功，1/失败
         """
-        try:
-            environ = get_level2_environ()
-            message = package.serial_pb(request)
-            request = async_udp.UDPRequest(environ[0], environ[1], message)
-            udp_client = async_udp.AsyncUDPClient()
-            udp_client.fetch(request=request, callback=self.on_response)
-            return 0
-        except Exception as e:
-            g_log.error("<%s> %s", e.__class__, e)
-            return 1
+        g_log.debug("%s", request)
+        environ = get_level2_environ()
+        message = package.serial_pb(request)
+        request = async_udp.UDPRequest(environ[0], environ[1], message)
+        udp_client = async_udp.AsyncUDPClient()
+        udp_client.fetch(request=request, callback=self.on_response)
+        g_log.debug("send request to level2")
 
     def on_response(self, response):
         """
@@ -46,10 +43,6 @@ class Base(RequestHandler):
         :param response: level2回包
         :return: pb格式/成功，None/失败
         """
-        try:
-            res = package.un_serial_pb(response)
-            g_log.debug('%s', res)
-            return res
-        except Exception as e:
-            g_log.error("<%s> %s", e.__class__, e)
-            return None
+        g_log.debug("receive response from level2")
+        self.response = package.un_serial_pb(response)
+        g_log.debug('%s', self.response)
