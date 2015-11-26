@@ -55,7 +55,7 @@ class Base(RequestHandler):
         value = super(Base, self).get_argument(name)
         if name == "phone_number":
             # 将phone_numbers转换成平台账号
-            account_mode = AccountMode.MERCHANT if "merchant" == super(Base, self).get_argument("kind", "merchant") \
+            account_mode = AccountMode.MERCHANT if "merchant" == super(Base, self).get_argument("kind", "consumer") \
                 else AccountMode.CONSUMER
             value = phone_number_to_account(value, account_mode)
             if not value:

@@ -129,11 +129,12 @@ class Credit(Base):
             for aggressive_credit_one in aggressive_credit:
                 merchant_name = aggressive_credit_one.merchant.name
                 merchant_logo = aggressive_credit_one.merchant.logo
+                merchant_identity = aggressive_credit_one.merchant.identity
                 total = 0
                 for credit_one in aggressive_credit_one.credit:
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
-                m = {"t": merchant_name, "l": merchant_logo, "a": total}
+                m = {"t": merchant_name, "l": merchant_logo, "a": total, "i": merchant_identity}
                 g_log.debug(m)
                 r.append(m)
             return 1, r
