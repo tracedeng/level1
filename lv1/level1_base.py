@@ -1,15 +1,13 @@
 # -*- coding: utf-8 -*-
 __author__ = 'tracedeng'
 
-from tornado.web import RequestHandler, asynchronous
-from tornado import gen
-import common_pb2
+from tornado.web import RequestHandler, HTTPError
 import log
 g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动日志功能
-# from level2_access import send_to_level2, receive_from_level2
 import async_udp
 import package
 from level2_environ import get_level2_environ
+from account_valid import phone_number_to_account, AccountMode
 
 
 class Base(RequestHandler):
@@ -46,3 +44,33 @@ class Base(RequestHandler):
         g_log.debug("receive response from level2")
         self.response = package.un_serial_pb(response)
         g_log.debug('%s', self.response)
+
+    def get_argument(self, name, default=[]):
+        """
+        获取参数
+        :param name: 参数名称
+        :param default: 缺省值
+        :return:
+        """
+        value = super(Base, self).get_argument(name)
+        if name == "phone_number":
+            # 将phone_numbers转换成平台账号
+            account_mode = AccountMode.MERCHANT if "merchant" == super(Base, self).get_argument("kind", "merchant") \
+                else AccountMode.CONSUMER
+            value = phone_number_to_account(value, account_mode)
+            if not value:
+                # None == value
+                raise InvalidArgumentError("phone_number")
+
+        return value
+
+
+class InvalidArgumentError(HTTPError):
+    """Exception raised by `RequestHandler.get_argument`.
+
+    according MissingArgumentError
+    """
+    def __init__(self, arg_name):
+        super(InvalidArgumentError, self).__init__(
+            400, 'Invalid argument %s' % arg_name)
+        self.arg_name = arg_name

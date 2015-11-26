@@ -8,7 +8,7 @@ import redis
 import common_pb2
 import log
 g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动日志功能
-from level1_base import Base
+from level1_base import Base, InvalidArgumentError
 from redis_connection import get_redis_connection
 
 
@@ -31,6 +31,12 @@ class Account(Base):
             # 缺少请求参数
             g_log.error("miss argument %s, %s", e.arg_name, e)
             self.write(json.dumps({"c": 10001, "m": "miss argument"}))
+            g_log.debug("[account.%s.response]", self.mode)
+            self.finish()
+        except InvalidArgumentError as e:
+            # 缺少请求参数
+            g_log.error("invalid argument %s, %s", e.arg_name, e)
+            self.write(json.dumps({"c": 10008, "m": "invalid argument"}))
             g_log.debug("[account.%s.response]", self.mode)
             self.finish()
         except (redis.ConnectionError, redis.TimeoutError) as e:
