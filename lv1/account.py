@@ -61,7 +61,7 @@ class Account(Base):
                                      "change_password": self.change_password_response, "get_sms_code": self.get_sms_code}
                 #                      "verify_sms_code": self.verify_sms_code}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
-                if self.code != 1:
+                if self.code == 1:
                     self.write(json.dumps({"c": self.code, "r": self.message}))
                 else:
                     self.write(json.dumps({"c": self.code, "m": self.message}))

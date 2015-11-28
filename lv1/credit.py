@@ -19,9 +19,10 @@ class Credit(Base):
         :return:
         """            
         try:
-            features_handle = {"credit_list": self.consumer_fetch_all_credit, "create_consumption": self.create_consumption}
-            # features_handle = {"register": self.register, "login": self.login, "change_password": self.change_password,
-            #                    "get_sms_code": self.get_sms_code, "verify_sms_code": self.verify_sms_code}
+            features_handle = {"credit_list": self.consumer_fetch_all_credit,
+                               "create_consumption": self.create_consumption,
+                               "credit_list_of_merchant": self.consumer_fetch_credit_of_merchant,
+                               "credit_detail": self.consumer_fetch_credit_detail}
             self.mode = self.get_argument("type")
             g_log.debug("[credit.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -50,12 +51,12 @@ class Credit(Base):
                 g_log.error("illegal response")
                 self.write(json.dumps({"c": 40003, "m": "exception"}))
             else:
-                features_response = {"credit_list": self.consumer_fetch_all_credit_response, "create_consumption": self.create_consumption_response}
-                # features_response = {"register": self.register_response, "login": self.login_response,
-                #                      "change_password": self.change_password_response, "get_sms_code": self.get_sms_code}
-                #                      "verify_sms_code": self.verify_sms_code}
+                features_response = {"credit_list": self.consumer_fetch_all_credit_response,
+                                     "create_consumption": self.create_consumption_response,
+                                     "credit_list_of_merchant": self.consumer_fetch_credit_of_merchant_response,
+                                     "credit_detail": self.consumer_fetch_credit_detail_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
-                if self.code != 1:
+                if self.code == 1:
                     self.write(json.dumps({"c": self.code, "r": self.message}))
                 else:
                     self.write(json.dumps({"c": self.code, "m": self.message}))
@@ -184,3 +185,126 @@ class Credit(Base):
         else:
             g_log.debug("create consumption record failed, %s:%s", code, message)
             return 40101, message
+
+    def consumer_fetch_credit_of_merchant(self):
+        """
+        获取用户拥有的某商家积分列表 phoneNumber
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("phone_number")
+        merchant_identity = self.get_argument("merchant_identity")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 306
+        request.head.seq = 2
+        request.head.numbers = numbers
+
+        body = request.consumer_credit_retrieve_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def consumer_fetch_credit_of_merchant_response(self, response):
+        """
+        逻辑层返回后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("consumer fetch all credit success")
+            body = response.consumer_credit_retrieve_response
+            aggressive_credit = body.consumer_credit.aggressive_credit
+            g_log.debug("consumer has %d merchant", len(aggressive_credit))
+            r = {}
+            for aggressive_credit_one in aggressive_credit:
+                merchant_name = aggressive_credit_one.merchant.name
+                merchant_logo = aggressive_credit_one.merchant.logo
+                merchant_identity = aggressive_credit_one.merchant.identity
+                merchant = {"t": merchant_name, "l": merchant_logo, "i": merchant_identity}
+                total = 0
+                credit_list = []
+                for credit_one in aggressive_credit_one.credit:
+                    #uint32 gift = 1;        // 是否赠送
+                    #
+                    # uint32 sums = 2;
+                    # string consumption_time = 3;
+                    #
+                    # uint32 exchanged = 4;   // 是否兑换成积分，yes、no、exchange、refuse
+                    # uint64 credit = 5;
+                    # string manager_numbers = 6;
+                    # string exchange_time = 7;
+                    #
+                    # uint64 credit_rest = 8; // 还剩多少积分
+                    #
+                    # string numbers = 10;
+                    credit = {"i": credit_one.identity, "e": credit_one.exchanged, "am": credit_one.credit_rest,
+                              "ct": credit_one.exchange_time, "et": credit_one.exchange_time}
+                    if credit_one.exchanged == 1:
+                        total += credit_one.credit_rest
+                    credit_list.append(credit)
+                merchant["a"] = total
+                r = {"m": merchant, "c": credit_list}
+                break
+            # g_log.debug(r)
+            return 1, r
+        else:
+            g_log.debug("consumer fetch all credit failed, %s:%s", code, message)
+            return 40201, message
+
+    def consumer_fetch_credit_detail(self):
+        """
+        获取用户拥有的所有积分总量列表 phoneNumber
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("phone_number")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 306
+        request.head.seq = 2
+        request.head.numbers = numbers
+
+        body = request.consumer_credit_retrieve_request
+        body.numbers = numbers
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def consumer_fetch_credit_detail_response(self, response):
+        """
+        逻辑层返回后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("consumer fetch all credit success")
+            body = response.consumer_credit_retrieve_response
+            aggressive_credit = body.consumer_credit.aggressive_credit
+            g_log.debug("consumer has %d merchant", len(aggressive_credit))
+            r = []
+            for aggressive_credit_one in aggressive_credit:
+                merchant_name = aggressive_credit_one.merchant.name
+                merchant_logo = aggressive_credit_one.merchant.logo
+                merchant_identity = aggressive_credit_one.merchant.identity
+                total = 0
+                for credit_one in aggressive_credit_one.credit:
+                    if credit_one.exchanged == 1:
+                        total += credit_one.credit_rest
+                m = {"t": merchant_name, "l": merchant_logo, "a": total, "i": merchant_identity}
+                g_log.debug(m)
+                r.append(m)
+            return 1, r
+        else:
+            g_log.debug("consumer fetch all credit failed, %s:%s", code, message)
+            return 40201, message
