@@ -7,7 +7,7 @@ g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动�
 import async_udp
 import package
 from level2_environ import get_level2_environ
-from account_valid import phone_number_to_account, AccountMode
+from account_valid import numbers_to_account, AccountMode
 
 
 class Base(RequestHandler):
@@ -45,24 +45,29 @@ class Base(RequestHandler):
         self.response = package.un_serial_pb(response)
         g_log.debug('%s', self.response)
 
-    def get_argument(self, name, default=[]):
+    def get_argument(self, name, default="", check=True):
         """
         获取参数
         :param name: 参数名称
         :param default: 缺省值
         :return:
         """
-        value = super(Base, self).get_argument(name)
-        if name == "phone_number":
-            # 将phone_numbers转换成平台账号
+        value = super(Base, self).get_argument(name, default)
+        if name == "numbers":
+            # 将numbers转换成平台账号
             account_mode = AccountMode.MERCHANT if "merchant" == super(Base, self).get_argument("kind", "consumer") \
                 else AccountMode.CONSUMER
-            value = phone_number_to_account(value, account_mode)
+            value = numbers_to_account(value, account_mode)
             if not value:
                 # None == value
-                raise InvalidArgumentError("phone_number")
+                raise InvalidArgumentError("numbers")
+        elif name == "password":
+            pass
+        elif name == "password_md5":
+            if not value or len(value) != 32:
+                raise InvalidArgumentError("password_md5")
 
-        # g_log.debug("%s,%s", name, value)
+        g_log.debug("%s,%s", name, value)
         return value
 
 

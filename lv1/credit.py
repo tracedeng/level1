@@ -98,7 +98,7 @@ class Credit(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
+        numbers = self.get_argument("numbers")
 
         # 组请求包
         request = common_pb2.Request()
@@ -150,8 +150,8 @@ class Credit(Base):
         """
         # 解析post参数
         # g_log.debug(self.request.query_arguments)
-        numbers = self.get_argument("phone_number")
-        merchant_identity = self.get_argument("merchant_identity")
+        numbers = self.get_argument("numbers")
+        merchant_identity = self.get_argument("merchant")
         sums = self.get_argument("sums")
 
         # 组请求包
@@ -192,8 +192,8 @@ class Credit(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
-        merchant_identity = self.get_argument("merchant_identity")
+        numbers = self.get_argument("numbers")
+        merchant_identity = self.get_argument("merchant")
 
         # 组请求包
         request = common_pb2.Request()
@@ -264,7 +264,7 @@ class Credit(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
+        numbers = self.get_argument("numbers")
 
         # 组请求包
         request = common_pb2.Request()

@@ -9,6 +9,7 @@ import log
 g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动日志功能
 from account import Account
 from credit import Credit
+from consumer import Consumer
 
 
 class Server():
@@ -43,7 +44,7 @@ class Server():
     def run(self):
         try:
             # url路由
-            route = [(r"/account", Account), (r"/credit", Credit)]
+            route = [(r"/account", Account), (r"/consumer", Consumer), (r"/credit", Credit)]
             application = Application(route)
             application.listen(self.port)
 

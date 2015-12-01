@@ -34,7 +34,7 @@ class Account(Base):
             g_log.debug("[account.%s.response]", self.mode)
             self.finish()
         except InvalidArgumentError as e:
-            # 缺少请求参数
+            # 无效请求参数
             g_log.error("invalid argument %s, %s", e.arg_name, e)
             self.write(json.dumps({"c": 10008, "m": "invalid argument"}))
             g_log.debug("[account.%s.response]", self.mode)
@@ -103,7 +103,7 @@ class Account(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
+        numbers = self.get_argument("numbers")
         password_md5 = self.get_argument("password_md5")
 
         # 组请求包
@@ -113,7 +113,7 @@ class Account(Base):
         request.head.numbers = numbers
 
         body = request.login_request
-        body.phone_number = numbers
+        body.numbers = numbers
         body.password_md5 = password_md5
 
         # 请求逻辑层
@@ -143,9 +143,18 @@ class Account(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
+        numbers = self.get_argument("numbers")
         password = self.get_argument("password")
         password_md5 = self.get_argument("password_md5")
+        sms_code = self.get_argument("sms_code")
+
+        # 检查验证码
+        if "match" != self._verify_sms_code(numbers, sms_code):
+            g_log.error("invalid sms code %s", sms_code)
+            self.write(json.dumps({"c": 10203, "m": "invalid sms code"}))
+            g_log.debug("[account.register.response]")
+            self.finish()
+            return
 
         # 组请求包
         request = common_pb2.Request()
@@ -154,7 +163,7 @@ class Account(Base):
         request.head.numbers = numbers
 
         body = request.register_request
-        body.phone_number = numbers
+        body.numbers = numbers
         body.password = password
         body.password_md5 = password_md5
 
@@ -182,9 +191,18 @@ class Account(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
+        numbers = self.get_argument("numbers")
         password = self.get_argument("password")
         password_md5 = self.get_argument("password_md5")
+        sms_code = self.get_argument("sms_code")
+
+        # 检查验证码
+        if "match" != self._verify_sms_code(numbers, sms_code):
+            g_log.error("invalid sms code %s", sms_code)
+            self.write(json.dumps({"c": 10302, "m": "invalid sms code"}))
+            g_log.debug("[account.change_password.response]")
+            self.finish()
+            return
 
         # 组请求包
         request = common_pb2.Request()
@@ -193,7 +211,7 @@ class Account(Base):
         request.head.numbers = numbers
 
         body = request.change_password_request
-        body.phone_number = numbers
+        body.numbers = numbers
         body.password = password
         body.password_md5 = password_md5
 
@@ -221,13 +239,13 @@ class Account(Base):
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
+        numbers = self.get_argument("numbers")
 
         # 生成随机的验证码
         sms_code = generate_verify_code()
 
         # redis cache验证码，60秒
-        sms_code_expire = 10
+        sms_code_expire = 30
         connection = get_redis_connection(numbers)
         if not connection:
             raise redis.ConnectionError
@@ -245,31 +263,37 @@ class Account(Base):
         :param response: 验证码
         """
         self.write(json.dumps({"c": 1, "r": response}))
+        g_log.debug("[account.get_sms_code.response]")
         self.finish()
+
+    def _verify_sms_code(self, numbers, sms_code):
+        # redis cache中验证短信验证码
+        connection = get_redis_connection(numbers)
+        key = "sms_code:%s" % numbers
+        value = connection.get(key)
+        g_log.debug("%s -> %s, %s", key, value, sms_code)
+        if sms_code == value:
+            match = "match"
+        else:
+            match = "not match"
+        return match
 
     def verify_sms_code(self):
         """
         验证验证码
         """
         # 解析post参数
-        numbers = self.get_argument("phone_number")
-        sms_code = self.get_argument("verify_code")
+        numbers = self.get_argument("numbers")
+        sms_code = self.get_argument("sms_code")
 
-        # redis cache中验证短信验证码
-        connection = get_redis_connection(numbers)
-        key = "sms_code:%s" % numbers
-        value = connection.get(key)
-        g_log.debug("%s:%s:%s", key, value, sms_code)
-        if sms_code == value:
-            match = "match"
-        else:
-            match = "not match"
+        match = self._verify_sms_code(numbers, sms_code)
         self.verify_sms_code_response(match)
 
     def verify_sms_code_response(self, response):
         """
         """
         self.write(json.dumps({"c": 1, "r": response}))
+        g_log.debug("[account.verify_sms_code.response]")
         self.finish()
 
 
