@@ -64,8 +64,9 @@ class Base(RequestHandler):
         elif name == "password":
             pass
         elif name == "password_md5":
-            if not value or len(value) != 32:
-                raise InvalidArgumentError("password_md5")
+            pass
+            # if not value or len(value) != 32:
+            #     raise InvalidArgumentError("password_md5")
 
         g_log.debug("%s,%s", name, value)
         return value

@@ -30,23 +30,23 @@ class Account(Base):
         except MissingArgumentError as e:
             # 缺少请求参数
             g_log.error("miss argument %s, %s", e.arg_name, e)
-            self.write(json.dumps({"c": 10001, "m": "miss argument"}))
+            self.write(json.dumps({"c": 1010001, "m": "miss argument"}))
             g_log.debug("[account.%s.response]", self.mode)
             self.finish()
         except InvalidArgumentError as e:
             # 无效请求参数
             g_log.error("invalid argument %s, %s", e.arg_name, e)
-            self.write(json.dumps({"c": 10008, "m": "invalid argument"}))
+            self.write(json.dumps({"c": 1010008, "m": "invalid argument"}))
             g_log.debug("[account.%s.response]", self.mode)
             self.finish()
         except (redis.ConnectionError, redis.TimeoutError) as e:
             g_log.error("<%s> %s", e.__class__, e)
-            self.write(json.dumps({"c": 10007, "m": "exception"}))
+            self.write(json.dumps({"c": 1010007, "m": "exception"}))
             g_log.debug("[account.%s.response]", self.mode)
             self.finish()
         except Exception as e:
             g_log.error("<%s> %s", e.__class__, e)
-            self.write(json.dumps({"c": 10002, "m": "exception"}))
+            self.write(json.dumps({"c": 1010002, "m": "exception"}))
             g_log.debug("[account.%s.response]", self.mode)
             self.finish()
 
@@ -55,7 +55,7 @@ class Account(Base):
             super(Account, self).on_response(response)
             if not self.response:
                 g_log.error("illegal response")
-                self.write(json.dumps({"c": 10003, "m": "exception"}))
+                self.write(json.dumps({"c": 1010003, "m": "exception"}))
             else:
                 features_response = {"register": self.register_response, "login": self.login_response,
                                      "change_password": self.change_password_response, "get_sms_code": self.get_sms_code}
@@ -67,7 +67,7 @@ class Account(Base):
                     self.write(json.dumps({"c": self.code, "m": self.message}))
         except Exception as e:
             g_log.error("<%s> %s", e.__class__, e)
-            self.write(json.dumps({"c": 10004, "m": "exception"}))
+            self.write(json.dumps({"c": 1010004, "m": "exception"}))
         g_log.debug("[account.%s.response]", self.mode)
         self.finish()
 
@@ -90,11 +90,11 @@ class Account(Base):
         if arg:
             # 未定义返回处理函数
             g_log.debug("not defined response")
-            return 10005, "no handler"
+            return 1010005, "no handler"
         else:
             # 无效的命令
             g_log.debug("unsupported type %s", self.mode)
-            self.write(json.dumps({"c": 10006, "m": "unsupported type"}))
+            self.write(json.dumps({"c": 1010006, "m": "unsupported type"}))
             self.finish()
 
     def login(self):
@@ -135,7 +135,7 @@ class Account(Base):
             return 1, session_key
         else:
             g_log.debug("login failed, %s:%s", code, message)
-            return 10101, message
+            return 1010101, message
 
     def register(self):
         """
@@ -151,7 +151,7 @@ class Account(Base):
         # 检查验证码
         if "match" != self._verify_sms_code(numbers, sms_code):
             g_log.error("invalid sms code %s", sms_code)
-            self.write(json.dumps({"c": 10203, "m": "invalid sms code"}))
+            self.write(json.dumps({"c": 1010202, "m": "invalid sms code"}))
             g_log.debug("[account.register.response]")
             self.finish()
             return
@@ -183,7 +183,7 @@ class Account(Base):
             return 1, "yes"
         else:
             g_log.debug("register failed, %s:%s", code, message)
-            return 10201, message
+            return 1010201, message
 
     def change_password(self):
         """
@@ -199,7 +199,7 @@ class Account(Base):
         # 检查验证码
         if "match" != self._verify_sms_code(numbers, sms_code):
             g_log.error("invalid sms code %s", sms_code)
-            self.write(json.dumps({"c": 10302, "m": "invalid sms code"}))
+            self.write(json.dumps({"c": 1010302, "m": "invalid sms code"}))
             g_log.debug("[account.change_password.response]")
             self.finish()
             return
@@ -231,7 +231,7 @@ class Account(Base):
             return 1, "yes"
         else:
             g_log.debug("change password failed, %s:%s", code, message)
-            return 10301, message
+            return 1010301, message
 
     def get_sms_code(self):
         """
