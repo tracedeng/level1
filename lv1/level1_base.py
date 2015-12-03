@@ -62,7 +62,8 @@ class Base(RequestHandler):
                 # None == value
                 raise InvalidArgumentError("numbers")
         elif name == "password":
-            pass
+            if not value:
+                raise InvalidArgumentError("password")
         elif name == "password_md5":
             pass
             # if not value or len(value) != 32:
