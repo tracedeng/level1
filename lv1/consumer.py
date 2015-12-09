@@ -3,13 +3,11 @@ __author__ = 'tracedeng'
 
 from tornado.web import MissingArgumentError, asynchronous
 import json
-import random
 import redis
 import common_pb2
 import log
 g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动日志功能
 from level1_base import Base, InvalidArgumentError
-from redis_connection import get_redis_connection
 
 
 class Consumer(Base):

@@ -10,6 +10,7 @@ g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动�
 from account import Account
 from credit import Credit
 from consumer import Consumer
+from merchant import Merchant
 
 
 class Server():
@@ -44,7 +45,7 @@ class Server():
     def run(self):
         try:
             # url路由
-            route = [(r"/account", Account), (r"/consumer", Consumer), (r"/credit", Credit)]
+            route = [(r"/account", Account), (r"/consumer", Consumer), (r"/merchant", Merchant), (r"/credit", Credit)]
             application = Application(route)
             application.listen(self.port)
 

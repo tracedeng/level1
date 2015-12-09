@@ -61,6 +61,11 @@ class Base(RequestHandler):
             if not value:
                 # None == value
                 raise InvalidArgumentError("numbers")
+        elif name == "manager":
+            value = numbers_to_account(value, AccountMode.MERCHANT)
+            if not value:
+                # None == value
+                raise InvalidArgumentError("manager")
         elif name == "password":
             if not value:
                 raise InvalidArgumentError("password")
@@ -68,8 +73,41 @@ class Base(RequestHandler):
             pass
             # if not value or len(value) != 32:
             #     raise InvalidArgumentError("password_md5")
+        elif name == "name":
+            # 创建商家必须要有名称
+            if not value:
+                raise InvalidArgumentError("name")
+        elif name == "longitude":
+            # 经度判断
+            if value:
+                try:
+                    g_log.debug(value)
+                    value = float(value)
+                    g_log.debug(value)
+                    if value > 180 or value < -180:
+                        raise InvalidArgumentError("longitude")
+                except Exception as e:
+                    raise InvalidArgumentError("longitude")
+            else:
+                value = -1.0
+        elif name == "latitude":
+            # 纬度判断
+            if value:
+                try:
+                    value = float(value)
+                    if value > 90 or value < -90:
+                        raise InvalidArgumentError("latitude")
+                except Exception as e:
+                    raise InvalidArgumentError("latitude")
+            else:
+                value = -1.0
+        elif name == "verified":
+            # 商户认证
+            value = value.lower()
+            if value != "yes" and value != "no":
+                raise InvalidArgumentError("verified")
 
-        g_log.debug("%s,%s", name, value)
+        g_log.debug("%s -> %s", name, value)
         return value
 
 
@@ -77,6 +115,7 @@ class InvalidArgumentError(HTTPError):
     """Exception raised by `RequestHandler.get_argument`.
 
     according MissingArgumentError
+    无效参数异常
     """
     def __init__(self, arg_name):
         super(InvalidArgumentError, self).__init__(
