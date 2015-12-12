@@ -19,8 +19,9 @@ class Credit(Base):
         :return:
         """            
         try:
-            features_handle = {"credit_list": self.consumer_fetch_all_credit,
-                               "create_consumption": self.create_consumption,
+            features_handle = {"consumption": self.create_consumption,
+                               "credit_list_m": self.merchant_fetch_all_credit,
+                               "credit_list": self.consumer_fetch_all_credit,
                                "credit_list_of_merchant": self.consumer_fetch_credit_of_merchant,
                                "credit_detail": self.consumer_fetch_credit_detail}
             self.mode = self.get_argument("type")
@@ -153,12 +154,14 @@ class Credit(Base):
         numbers = self.get_argument("numbers")
         merchant_identity = self.get_argument("merchant")
         sums = self.get_argument("sums")
+        session_key = self.get_argument("session_key", "")
 
         # 组请求包
         request = common_pb2.Request()
         request.head.cmd = 301
         request.head.seq = 2
         request.head.numbers = numbers
+        request.head.session_key = session_key
 
         body = request.consumption_create_request
         body.numbers = numbers
@@ -184,7 +187,7 @@ class Credit(Base):
             return 1, r
         else:
             g_log.debug("create consumption record failed, %s:%s", code, message)
-            return 40101, message
+            return 1040101, message
 
     def consumer_fetch_credit_of_merchant(self):
         """
