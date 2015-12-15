@@ -55,14 +55,14 @@ class Base(RequestHandler):
         value = super(Base, self).get_argument(name, default)
         if name == "numbers":
             # 将numbers转换成平台账号
-            account_mode = AccountMode.MERCHANT if "merchant" == super(Base, self).get_argument("kind", "consumer") \
-                else AccountMode.CONSUMER
-            value = numbers_to_account(value, account_mode)
+            # account_mode = AccountMode.MERCHANT if "merchant" == super(Base, self).get_argument("kind", "consumer") \
+            #     else AccountMode.CONSUMER
+            # value = numbers_to_account(value, account_mode)
             if not value:
                 # None == value
                 raise InvalidArgumentError("numbers")
         elif name == "manager":
-            value = numbers_to_account(value, AccountMode.MERCHANT)
+            # value = numbers_to_account(value, AccountMode.MERCHANT)
             if not value:
                 # None == value
                 raise InvalidArgumentError("manager")
