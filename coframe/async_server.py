@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 __author__ = 'tracedeng'
 
+# 因为level1和level2很多文件重名出错，所以不在level2中import
+import sys
+sys.path.remove("/Users/tracedeng/PycharmProjects/testproject/calculus/lv2")
+
 import ConfigParser
 from tornado.ioloop import IOLoop
 from tornado.web import Application

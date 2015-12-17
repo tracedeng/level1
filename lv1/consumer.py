@@ -308,15 +308,17 @@ class Consumer(Base):
         """
         # 解析post参数
         numbers = self.get_argument("numbers")
-        kind = self.get_argument("resource_kind", "dummy")
+        kind = self.get_argument("resource", "dummy")
         merchant_identity = self.get_argument("merchant", "")
         debug = self.get_argument("debug", "online")
+        session_key = self.get_argument("session_key", "")
 
         # 组请求包
         request = common_pb2.Request()
         request.head.cmd = 601
         request.head.seq = 2
         request.head.numbers = numbers
+        request.head.session_key = session_key
 
         body = request.upload_token_request
         body.numbers = numbers
@@ -339,8 +341,10 @@ class Consumer(Base):
             # level2 成功返回
             g_log.debug("get upload token success")
             body = response.upload_token_response
-            upload_token = body.upload_token
-            return 1, upload_token
+            # upload_token = body.upload_token
+            # key = body.key
+            r = {"tok": body.upload_token, "path": body.key}
+            return 1, r
         else:
             g_log.debug("get upload token failed, %s:%s", code, message)
             return 1020601, message

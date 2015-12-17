@@ -100,12 +100,14 @@ class Credit(Base):
         """
         # 解析post参数
         numbers = self.get_argument("numbers")
+        session_key = self.get_argument("session_key", "")
 
         # 组请求包
         request = common_pb2.Request()
         request.head.cmd = 306
         request.head.seq = 2
         request.head.numbers = numbers
+        request.head.session_key = session_key
 
         body = request.consumer_credit_retrieve_request
         body.numbers = numbers
@@ -311,3 +313,6 @@ class Credit(Base):
         else:
             g_log.debug("consumer fetch all credit failed, %s:%s", code, message)
             return 40201, message
+
+    def merchant_fetch_all_credit(self):
+        pass
