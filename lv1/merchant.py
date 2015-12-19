@@ -224,11 +224,12 @@ class Merchant(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
-        merchant_identity = self.get_argument("merchant_identity", "")
+        merchant_identity = self.get_argument("merchant", "")
 
         default = ["not", "update"]
         name = self.get_argument("name", default)
         name_en = self.get_argument("name_en", default)
+        logo = self.get_argument("logo", default)
         contract = self.get_argument("contract", default)
         contact_numbers = self.get_argument("contact_numbers", default)
         email = self.get_argument("email", default)
@@ -255,6 +256,8 @@ class Merchant(Base):
             material.name = name
         if name_en != default:
             material.name_en = name_en
+        if logo != default:
+            material.logo = logo
         if contract != default:
             material.contract = int(contract)
         if email != default:
@@ -300,7 +303,7 @@ class Merchant(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
-        merchant_identity = self.get_argument("merchant_identity", "")
+        merchant_identity = self.get_argument("merchant", "")
         verified = self.get_argument("verified", "")
 
         # 组请求包
@@ -341,7 +344,7 @@ class Merchant(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
-        merchant_identity = self.get_argument("merchant_identity", "")
+        merchant_identity = self.get_argument("merchant", "")
 
         # 组请求包
         request = common_pb2.Request()
@@ -513,7 +516,7 @@ class Merchant(Base):
         """
         # 解析post参数
         numbers = self.get_argument("numbers")
-        kind = self.get_argument("resource_kind", "dummy")
+        kind = self.get_argument("resource", "dummy")
         merchant_identity = self.get_argument("merchant", "")
         debug = self.get_argument("debug", "online")
 
@@ -544,8 +547,9 @@ class Merchant(Base):
             # level2 成功返回
             g_log.debug("get upload token success")
             body = response.upload_token_response
-            upload_token = body.upload_token
-            return 1, upload_token
+            r = {"tok": body.upload_token, "path": body.key}
+            # upload_token = body.upload_token
+            return 1, r
         else:
             g_log.debug("get upload token failed, %s:%s", code, message)
             return 1031001, message

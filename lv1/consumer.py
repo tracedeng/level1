@@ -207,7 +207,7 @@ class Consumer(Base):
 
         default = ["not", "update"]
         nickname = self.get_argument("nickname", default)
-        sexy = self.get_argument("sexy", default)
+        sexy = self.get_argument("gender", default)
         age = self.get_argument("age", default)
         email = self.get_argument("email", default)
         avatar = self.get_argument("avatar", default)
