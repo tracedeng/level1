@@ -177,6 +177,7 @@ class Merchant(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
+        merchant_identity = self.get_argument("merchant", "")
 
         # 组请求包
         request = common_pb2.Request()
@@ -187,6 +188,8 @@ class Merchant(Base):
 
         body = request.merchant_retrieve_request
         body.numbers = numbers
+        if merchant_identity:
+            body.merchant_identity = merchant_identity
 
         # 请求逻辑层
         self.send_to_level2(request)

@@ -53,7 +53,7 @@ class Credit(Base):
                 self.write(json.dumps({"c": 40003, "m": "exception"}))
             else:
                 features_response = {"credit_list": self.consumer_fetch_all_credit_response,
-                                     "create_consumption": self.create_consumption_response,
+                                     "consumption": self.create_consumption_response,
                                      "credit_list_of_merchant": self.consumer_fetch_credit_of_merchant_response,
                                      "credit_detail": self.consumer_fetch_credit_detail_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
@@ -199,12 +199,14 @@ class Credit(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         merchant_identity = self.get_argument("merchant")
+        session_key = self.get_argument("session_key", "")
 
         # 组请求包
         request = common_pb2.Request()
         request.head.cmd = 306
         request.head.seq = 2
         request.head.numbers = numbers
+        request.head.session_key = session_key
 
         body = request.consumer_credit_retrieve_request
         body.numbers = numbers
@@ -236,21 +238,8 @@ class Credit(Base):
                 total = 0
                 credit_list = []
                 for credit_one in aggressive_credit_one.credit:
-                    #uint32 gift = 1;        // 是否赠送
-                    #
-                    # uint32 sums = 2;
-                    # string consumption_time = 3;
-                    #
-                    # uint32 exchanged = 4;   // 是否兑换成积分，yes、no、exchange、refuse
-                    # uint64 credit = 5;
-                    # string manager_numbers = 6;
-                    # string exchange_time = 7;
-                    #
-                    # uint64 credit_rest = 8; // 还剩多少积分
-                    #
-                    # string numbers = 10;
                     credit = {"i": credit_one.identity, "e": credit_one.exchanged, "am": credit_one.credit_rest,
-                              "ct": credit_one.exchange_time, "et": credit_one.exchange_time}
+                              "ct": credit_one.exchange_time, "et": credit_one.exchange_time, "s": credit_one.sums}
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
                     credit_list.append(credit)

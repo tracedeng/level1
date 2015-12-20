@@ -107,7 +107,7 @@ class Consumer(Base):
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
         nickname = self.get_argument("nickname", "")
-        sexy = self.get_argument("sexy", "unknow")
+        sexy = self.get_argument("gender", "unknow")
         age = self.get_argument("age", 0)
         email = self.get_argument("email", "")
         avatar = self.get_argument("avatar", "")
