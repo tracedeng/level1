@@ -35,7 +35,8 @@ class _UDPConnection(object):
 
         address_info = socket.getaddrinfo(request.address, request.port, socket.AF_INET, socket.SOCK_DGRAM, 0, 0)
         af, socket_type, proto, _, socket_address = address_info[0]
-        self.stream = IOStream(socket.socket(af, socket_type, proto), io_loop=self.io_loop, max_buffer_size=2500)
+        self.stream = IOStream(socket.socket(af, socket_type, proto), io_loop=self.io_loop,
+                               max_buffer_size=max_buffer_size)
 
         self.stream.connect(socket_address, self._on_connect)
 
@@ -63,7 +64,7 @@ class AsyncUDPClient(object):
         self.max_clients = 10
         self.queue = collections.deque()
         self.active = {}
-        self.max_buffer_size = 2500
+        self.max_buffer_size = 8192
 
     def fetch(self, request, callback, **kwargs):
         callback = stack_context.wrap(callback)

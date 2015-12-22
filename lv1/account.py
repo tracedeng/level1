@@ -133,9 +133,10 @@ class Account(Base):
             body = response.login_response
             session_key = body.session_key
             material = body.material
+            merchant = body.merchant
             r = {"ni": material.nickname, "sex": material.sexy, "age": material.age, "em": material.email,
                  "ava": material.avatar, "in": material.introduce, "co": material.country,
-                 "lo": material.location, "qr": material.qrcode, "sk": session_key}
+                 "lo": material.location, "qr": material.qrcode, "mid": merchant.identity, "sk": session_key}
             return 1, r
         else:
             g_log.debug("login failed, %s:%s", code, message)
