@@ -25,7 +25,8 @@ class Merchant(Base):
                                "delete": self.delete_merchant, "create_manager": self.create_merchant_manager,
                                "delete_manager": self.merchant_delete_manager,
                                "delegate": self.merchant_delegate_manager,
-                               "upload_token": self.upload_token, "update_avatar": self.update_avatar}
+                               "upload_token": self.upload_token, "update_logo": self.update_logo,
+                               "verified_merchant": self.retrieve_verified_merchant}
             self.mode = self.get_argument("type")
             g_log.debug("[merchant.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -67,7 +68,8 @@ class Merchant(Base):
                                      "create_manager": self.create_merchant_manager_response,
                                      "delete_manager": self.merchant_delete_manager_response,
                                      "delegate": self.merchant_delegate_manager_response,
-                                     "upload_token": self.upload_token_response}
+                                     "upload_token": self.upload_token_response,
+                                     "verified_merchant": self.retrieve_verified_merchant_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
                     self.write(json.dumps({"c": self.code, "r": self.message}))
@@ -557,5 +559,53 @@ class Merchant(Base):
             g_log.debug("get upload token failed, %s:%s", code, message)
             return 1031001, message
 
-    def update_avatar(self):
+    def update_logo(self):
         pass
+
+    def retrieve_verified_merchant(self):
+        """
+        读取商家资料
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 210
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.retrieve_merchant_request
+        body.numbers = numbers
+        body.verified = "yes"
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def retrieve_verified_merchant_response(self, response):
+        """
+        逻辑层返回请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("retrieve verified merchant success")
+            body = response.retrieve_merchant_response
+            # materials = body.materials
+            r = []
+            for material in body.materials:
+                merchant = {"n": material.name, "ne": material.name_en, "con": material.contact_numbers,
+                            "em": material.email, "logo": material.logo, "in": material.introduce,
+                            "co": material.country, "v": material.verified, "lo": material.location,
+                            "qr": material.qrcode, "fou": material.numbers, "ctr": material.contract,
+                            "lon": material.longitude, "lat": material.latitude, "id": material.identity}
+                r.append(merchant)
+            return 1, r
+        else:
+            g_log.debug("retrieve merchant failed, %s:%s", code, message)
+            return 1030201, message
