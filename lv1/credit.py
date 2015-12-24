@@ -24,6 +24,7 @@ class Credit(Base):
                                "credit_list_of_merchant": self.consumer_fetch_credit_of_merchant,
                                "credit_list_detail": self.consumer_fetch_all_credit_detail,
                                "credit_list_m": self.merchant_fetch_all_credit,
+                               "credit_list_m_of_consumer": self.merchant_fetch_credit_of_consumer,
                                "apply_list_m": self.merchant_fetch_apply_credit,
                                "credit_detail": self.consumer_fetch_credit_detail,
                                "confirm": self.confirm_apply_credit, "refuse": self.refuse_apply_credit}
@@ -59,6 +60,8 @@ class Credit(Base):
                                      "credit_list": self.consumer_fetch_all_credit_response,
                                      "credit_list_of_merchant": self.consumer_fetch_credit_of_merchant_response,
                                      "credit_list_detail": self.consumer_fetch_all_credit_detail_response,
+                                     "credit_list_m": self.merchant_fetch_all_credit_response,
+                                     "credit_list_m_of_consumer": self.merchant_fetch_credit_of_consumer_response,
                                      "apply_list_m": self.merchant_fetch_apply_credit_response,
                                      "credit_detail": self.consumer_fetch_credit_detail_response,
                                      "confirm": self.confirm_apply_credit_response,
@@ -301,8 +304,8 @@ class Credit(Base):
             r = []
             for aggressive_credit_one in aggressive_credit:
                 # 未认证的商家不支持互换
-                if "no" == aggressive_credit_one.merchant.verified:
-                    continue
+                # if "no" == aggressive_credit_one.merchant.verified:
+                #     continue
                 merchant_name = aggressive_credit_one.merchant.name
                 merchant_logo = aggressive_credit_one.merchant.logo
                 merchant_identity = aggressive_credit_one.merchant.identity
@@ -314,8 +317,8 @@ class Credit(Base):
                         credit.append({"et": credit_one.expire_time, "id": credit_one.identity,
                                        "qu": credit_one.credit_rest})
                 # 消费阶段的数据不返回
-                if total == 0:
-                    continue
+                # if total == 0:
+                #     continue
                 m = {"t": merchant_name, "l": merchant_logo, "a": total, "i": merchant_identity, "cr": credit}
                 r.append(m)
                 g_log.debug(m)
@@ -379,7 +382,7 @@ class Credit(Base):
     def merchant_fetch_all_credit(self):
         # 解析post参数
         numbers = self.get_argument("numbers")
-        # merchant_identity = self.get_argument("merchant")
+        merchant_identity = self.get_argument("merchant")
         session_key = self.get_argument("session_key", "")
 
         # 组请求包
@@ -391,7 +394,7 @@ class Credit(Base):
 
         body = request.merchant_credit_retrieve_request
         body.numbers = numbers
-        # body.merchant_identity = merchant_identity
+        body.merchant_identity = merchant_identity
 
         # 请求逻辑层
         self.send_to_level2(request)
@@ -406,31 +409,82 @@ class Credit(Base):
         message = head.message
         if 1 == code:
             # level2返回1为成功，其它认为失败
-            g_log.debug("consumer fetch all credit success")
-            body = response.consumer_credit_retrieve_response
-            aggressive_credit = body.consumer_credit.aggressive_credit
-            g_log.debug("consumer has %d merchant", len(aggressive_credit))
-            r = {}
+            g_log.debug("merchant fetch all credit success")
+            body = response.merchant_credit_retrieve_response
+            aggressive_credit = body.merchant_credit[0].aggressive_credit
+            # g_log.debug(aggressive_credit)
+            # g_log.debug("consumer has %d merchant", len(aggressive_credit))
+            r = []
             for aggressive_credit_one in aggressive_credit:
-                merchant_name = aggressive_credit_one.merchant.name
-                merchant_logo = aggressive_credit_one.merchant.logo
-                merchant_identity = aggressive_credit_one.merchant.identity
-                merchant = {"t": merchant_name, "l": merchant_logo, "i": merchant_identity}
+                nickname = aggressive_credit_one.consumer.nickname
+                avatar = aggressive_credit_one.consumer.avatar
+                numbers = aggressive_credit_one.consumer.numbers
+                identity = aggressive_credit_one.consumer.identity
+                # merchant_identity = aggressive_credit_one.merchant.identity
                 total = 0
-                credit_list = []
                 for credit_one in aggressive_credit_one.credit:
-                    credit = {"i": credit_one.identity, "e": credit_one.exchanged, "am": credit_one.credit_rest,
-                              "ct": credit_one.exchange_time, "et": credit_one.exchange_time, "s": credit_one.sums}
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
-                    credit_list.append(credit)
-                merchant["a"] = total
-                r = {"m": merchant, "c": credit_list}
-                break
-            # g_log.debug(r)
+                credit = {"nu": numbers, "ni": nickname, "ava": avatar, "cid": identity, "a": total}
+                r.append(credit)
             return 1, r
         else:
-            g_log.debug("consumer fetch all credit failed, %s:%s", code, message)
+            g_log.debug("merchant fetch all credit failed, %s:%s", code, message)
+            return 1040202, message
+
+    def merchant_fetch_credit_of_consumer(self):
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        merchant_identity = self.get_argument("merchant")
+        consumer_numbers = self.get_argument("consumer")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 302
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.merchant_credit_retrieve_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+        body.consumer_numbers = consumer_numbers
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def merchant_fetch_credit_of_consumer_response(self, response):
+        """
+        逻辑层返回后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("merchant fetch all credit success")
+            body = response.merchant_credit_retrieve_response
+            aggressive_credit = body.merchant_credit[0].aggressive_credit
+            g_log.debug(aggressive_credit)
+            # g_log.debug("consumer has %d merchant", len(aggressive_credit))
+            r = []
+            for aggressive_credit_one in aggressive_credit:
+                # nickname = aggressive_credit_one.consumer.nickname
+                # avatar = aggressive_credit_one.consumer.avatar
+                # merchant_identity = aggressive_credit_one.merchant.identity
+                total = 0
+                for credit_one in aggressive_credit_one.credit:
+                    if credit_one.exchanged == 1:
+                        total += credit_one.credit_rest
+                        credit = {"qu": credit_one.credit_rest, "et": credit_one.expire_time, "cid": credit_one.identity}
+                        r.append(credit)
+                # 只处理一个用户的积分
+                break
+            return 1, r
+        else:
+            g_log.debug("merchant fetch all credit failed, %s:%s", code, message)
             return 1040202, message
 
     def merchant_fetch_apply_credit(self):
@@ -518,3 +572,38 @@ class Credit(Base):
         else:
             g_log.debug("confirm apply credit failed, %s:%s", code, message)
             return 1040401, message
+
+    def refuse_apply_credit(self):
+        numbers = self.get_argument("numbers")
+        credit_identity = self.get_argument("credit")
+        merchant_identity = self.get_argument("merchant")
+        reason = self.get_argument("reason")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 304
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.refuse_consumption_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+        body.credit_identity = credit_identity
+        body.reason = reason
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def refuse_apply_credit_response(self, response):
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("refuse apply credit success")
+            return 1, "yes"
+        else:
+            g_log.debug("refuse apply credit failed, %s:%s", code, message)
+            return 1040501, message

@@ -135,7 +135,7 @@ class Account(Base):
             material = body.material
             merchant = body.merchant
             r = {"ni": material.nickname, "sex": material.sexy, "age": material.age, "em": material.email,
-                 "ava": material.avatar, "in": material.introduce, "co": material.country,
+                 "ava": material.avatar, "in": material.introduce, "co": material.country, "nu": material.numbers,
                  "lo": material.location, "qr": material.qrcode, "mid": merchant.identity, "sk": session_key}
             return 1, r
         else:
