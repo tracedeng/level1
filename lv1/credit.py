@@ -314,8 +314,10 @@ class Credit(Base):
                 for credit_one in aggressive_credit_one.credit:
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
-                        credit.append({"et": credit_one.expire_time, "id": credit_one.identity,
-                                       "qu": credit_one.credit_rest})
+
+                    # 测试时都返回
+                    credit.append({"et": credit_one.expire_time, "id": credit_one.identity,
+                                   "qu": credit_one.credit_rest})
                 # 消费阶段的数据不返回
                 # if total == 0:
                 #     continue

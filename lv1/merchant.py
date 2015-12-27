@@ -570,6 +570,7 @@ class Merchant(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
+        verified = self.get_argument("verified", "both")
 
         # 组请求包
         request = common_pb2.Request()
@@ -580,7 +581,7 @@ class Merchant(Base):
 
         body = request.retrieve_merchant_request
         body.numbers = numbers
-        body.verified = "yes"
+        body.verified = verified
 
         # 请求逻辑层
         self.send_to_level2(request)

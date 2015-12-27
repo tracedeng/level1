@@ -104,7 +104,7 @@ class Base(RequestHandler):
         elif name == "verified":
             # 商户认证
             value = value.lower()
-            if value != "yes" and value != "no":
+            if value != "yes" and value != "no" and value != "both":
                 raise InvalidArgumentError("verified")
 
         g_log.debug("%s -> %s", name, value)
