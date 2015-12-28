@@ -27,7 +27,8 @@ class Credit(Base):
                                "credit_list_m_of_consumer": self.merchant_fetch_credit_of_consumer,
                                "apply_list_m": self.merchant_fetch_apply_credit,
                                "credit_detail": self.consumer_fetch_credit_detail,
-                               "confirm": self.confirm_apply_credit, "refuse": self.refuse_apply_credit}
+                               "confirm": self.confirm_apply_credit, "refuse": self.refuse_apply_credit,
+                               "interchange": self.credit_interchange}
             self.mode = self.get_argument("type")
             g_log.debug("[credit.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -65,7 +66,8 @@ class Credit(Base):
                                      "apply_list_m": self.merchant_fetch_apply_credit_response,
                                      "credit_detail": self.consumer_fetch_credit_detail_response,
                                      "confirm": self.confirm_apply_credit_response,
-                                     "refuse": self.refuse_apply_credit_response}
+                                     "refuse": self.refuse_apply_credit_response,
+                                     "interchange": self.credit_interchange_response}
 
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
@@ -609,3 +611,44 @@ class Credit(Base):
         else:
             g_log.debug("refuse apply credit failed, %s:%s", code, message)
             return 1040501, message
+
+    def credit_interchange(self):
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        credit = self.get_argument("credit")
+        exec_interchange = self.get_argument("exec_interchange", "0")
+        from_merchant = self.get_argument("from")
+        to_merchant = self.get_argument("to")
+        quantity = self.get_argument("quantity", "0")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 309
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.credit_interchange_request
+        body.numbers = numbers
+        body.exec_interchange = int(exec_interchange)
+        body.credit_identity = credit
+        body.from_merchant = from_merchant
+        body.to_merchant = to_merchant
+        body.credit = int(quantity)
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def credit_interchange_response(self, response):
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("credit interchange success")
+            body = response.credit_interchange_response
+            return 1, {"quantity": body.credit, "fee": body.fee}
+        else:
+            g_log.debug("credit interchange failed, %s:%s", code, message)
+            return 1040601, message
