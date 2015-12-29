@@ -35,18 +35,18 @@ class Credit(Base):
         except MissingArgumentError as e:
             # 缺少请求参数
             g_log.error("miss argument %s, %s", e.arg_name, e)
-            self.write(json.dumps({"c": 40001, "m": "miss argument"}))
+            self.write(json.dumps({"c": 1040001, "m": "miss argument"}))
             g_log.debug("[credit.%s.response]", self.mode)
             self.finish()
         except InvalidArgumentError as e:
             # 缺少请求参数
             g_log.error("invalid argument %s, %s", e.arg_name, e)
-            self.write(json.dumps({"c": 40008, "m": "invalid argument"}))
+            self.write(json.dumps({"c": 1040008, "m": "invalid argument"}))
             g_log.debug("[credit.%s.response]", self.mode)
             self.finish()
         except Exception as e:
             g_log.error("<%s> %s", e.__class__, e)
-            self.write(json.dumps({"c": 40002, "m": "exception"}))
+            self.write(json.dumps({"c": 1040002, "m": "exception"}))
             g_log.debug("[credit.%s.response]", self.mode)
             self.finish()
 
@@ -55,7 +55,7 @@ class Credit(Base):
             super(Credit, self).on_response(response)
             if not self.response:
                 g_log.error("illegal response")
-                self.write(json.dumps({"c": 40003, "m": "exception"}))
+                self.write(json.dumps({"c": 1040003, "m": "exception"}))
             else:
                 features_response = {"consumption": self.create_consumption_response,
                                      "credit_list": self.consumer_fetch_all_credit_response,
@@ -78,7 +78,7 @@ class Credit(Base):
             from print_exception import print_exception
             print_exception()
             g_log.error("<%s> %s", e.__class__, e)
-            self.write(json.dumps({"c": 40004, "m": "exception"}))
+            self.write(json.dumps({"c": 1040004, "m": "exception"}))
         g_log.debug("[credit.%s.response]", self.mode)
         self.finish()
 
@@ -101,11 +101,11 @@ class Credit(Base):
         if arg:
             # 未定义返回处理函数
             g_log.debug("not defined response")
-            return 10005, "no handler"
+            return 1040005, "no handler"
         else:
             # 无效的命令
             g_log.debug("unsupported type %s", self.mode)
-            self.write(json.dumps({"c": 10006, "m": "unsupported type"}))
+            self.write(json.dumps({"c": 1040006, "m": "unsupported type"}))
             self.finish()
 
     def create_consumption(self):
