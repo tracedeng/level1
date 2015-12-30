@@ -166,7 +166,8 @@ class Merchant(Base):
         message = head.message
         if 1 == code:
             g_log.debug("create merchant success")
-            return 1, "yes"
+            body = response.merchant_create_response
+            return 1, body.merchant_identity
         else:
             g_log.debug("create merchant failed, %s:%s", code, message)
             return 1030101, message
