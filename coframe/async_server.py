@@ -16,6 +16,7 @@ from credit import Credit
 from consumer import Consumer
 from merchant import Merchant
 from business import Business
+from flow import Flow
 
 
 class Server():
@@ -50,7 +51,8 @@ class Server():
     def run(self):
         try:
             # url路由
-            route = [(r"/account", Account), (r"/consumer", Consumer), (r"/merchant", Merchant), (r"/credit", Credit), (r"/business", Business)]
+            route = [(r"/account", Account), (r"/consumer", Consumer), (r"/merchant", Merchant), (r"/credit", Credit),
+                     (r"/business", Business), (r"/flow", Flow)]
             application = Application(route)
             application.listen(self.port)
 
