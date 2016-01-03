@@ -164,7 +164,7 @@ class Flow(Base):
 
         # 组请求包
         request = common_pb2.Request()
-        request.head.cmd = 602
+        request.head.cmd = 502
         request.head.seq = 2
         request.head.numbers = numbers
         request.head.session_key = session_key
