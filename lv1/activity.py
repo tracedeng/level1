@@ -21,7 +21,7 @@ class Activity(Base):
         try:
             features_handle = {"create": self.create_activity, "retrieve": self.retrieve_activity,
                                "update": self.update_activity, "delete": self.delete_activity,
-                               "upload_token": self.upload_token}
+                               "consumer_retrieve": self.consumer_retrieve_activity, "upload_token": self.upload_token}
             self.mode = self.get_argument("type")
             g_log.debug("[activity.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -54,6 +54,7 @@ class Activity(Base):
                                      "retrieve": self.retrieve_activity_response,
                                      "update": self.update_activity_response,
                                      "delete": self.delete_activity_response,
+                                     "consumer_retrieve": self.consumer_retrieve_activity_response,
                                      "upload_token": self.upload_token_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
@@ -145,7 +146,7 @@ class Activity(Base):
 
     def retrieve_activity(self):
         """
-        读取活动资料
+        读取活动列表
         :return:
         """
         # 解析post参数
@@ -288,6 +289,51 @@ class Activity(Base):
         else:
             g_log.debug("delete activity failed, %s:%s", code, message)
             return 1070401, message
+
+    def consumer_retrieve_activity(self):
+        """
+        用户读取活动列表
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        session_key = self.get_argument("session_key", "")
+        # TODO 经纬度
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 706
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.consumer_retrieve_activity_request
+        body.numbers = numbers
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def consumer_retrieve_activity_response(self, response):
+        """
+        逻辑层返回请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("consumer retrieve activity success")
+            body = response.consumer_retrieve_activity_response
+            r = []
+            for activity_one in body.materials:
+                activity = {"t": activity_one.title, "in": activity_one.introduce, "cr": activity_one.credit,
+                            "po": activity_one.poster, "et": activity_one.expire_time, "id": activity_one.identity,
+                            "mid": activity_one.merchant_identity, "na": activity_one.name}
+                r.append(activity)
+            return 1, r
+        else:
+            g_log.debug("retrieve activity failed, %s:%s", code, message)
+            return 1070601, message
 
     def upload_token(self):
         """
