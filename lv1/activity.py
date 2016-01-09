@@ -400,7 +400,7 @@ class Activity(Base):
         numbers = self.get_argument("numbers")
         kind = self.get_argument("resource", "dummy")
         merchant_identity = self.get_argument("merchant", "")
-        debug = self.get_argument("debug", "online")
+        debug = self.get_argument("debug", "debug")
         session_key = self.get_argument("session_key", "")
 
         # 组请求包
