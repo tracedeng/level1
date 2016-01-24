@@ -25,7 +25,7 @@ class Merchant(Base):
                                "delete": self.delete_merchant, "create_manager": self.create_merchant_manager,
                                "delete_manager": self.merchant_delete_manager,
                                "delegate": self.merchant_delegate_manager,
-                               "upload_token": self.upload_token, "update_logo": self.update_logo,
+                               "upload_token": self.upload_token,
                                "verified_merchant": self.retrieve_verified_merchant}
             self.mode = self.get_argument("type")
             g_log.debug("[merchant.%s.request]", self.mode)
@@ -559,9 +559,6 @@ class Merchant(Base):
         else:
             g_log.debug("get upload token failed, %s:%s", code, message)
             return 1031001, message
-
-    def update_logo(self):
-        pass
 
     def retrieve_verified_merchant(self):
         """
