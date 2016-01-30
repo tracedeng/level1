@@ -195,9 +195,15 @@ class Credit(Base):
                 merchant_logo = aggressive_credit_one.merchant.logo
                 merchant_identity = aggressive_credit_one.merchant.identity
                 total = 0
+                has_un_exchanged = 0  # 有未兑换消费
                 for credit_one in aggressive_credit_one.credit:
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
+                    else:
+                        has_un_exchanged = 1
+                if total == 0 and has_un_exchanged == 0:
+                    # 积分券全部消费完毕并且没有未兑换消费，不显示
+                    continue
                 m = {"t": merchant_name, "l": merchant_logo, "a": total, "i": merchant_identity}
                 g_log.debug(m)
                 r.append(m)
@@ -256,6 +262,9 @@ class Credit(Base):
                     credit = {"i": credit_one.identity, "e": credit_one.exchanged, "am": credit_one.credit_rest,
                               "ct": credit_one.exchange_time, "et": credit_one.exchange_time, "s": credit_one.sums}
                     if credit_one.exchanged == 1:
+                        # 已用完的积分不展示
+                        if credit_one.credit_rest == 0:
+                            continue
                         total += credit_one.credit_rest
                     credit_list.append(credit)
                 merchant["a"] = total
