@@ -10,6 +10,10 @@ from level1_base import Base, InvalidArgumentError
 
 
 class Credit(Base):
+    def __init__(self, *args, **kwargs):
+        Base.__init__(self, *args, **kwargs)
+        self.merchant_exclude = ""
+
     @asynchronous
     def post(self, *args, **kwargs):
         """
@@ -284,6 +288,7 @@ class Credit(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
+        self.merchant_exclude = self.get_argument("merchant", "")
 
         # 组请求包
         request = common_pb2.Request()
@@ -317,6 +322,8 @@ class Credit(Base):
                 # 未认证的商家不支持互换
                 # if "no" == aggressive_credit_one.merchant.verified:
                 #     continue
+                if self.merchant_exclude == aggressive_credit_one.merchant.identity:
+                    continue
                 merchant_name = aggressive_credit_one.merchant.name
                 merchant_logo = aggressive_credit_one.merchant.logo
                 merchant_identity = aggressive_credit_one.merchant.identity
@@ -327,11 +334,13 @@ class Credit(Base):
                         total += credit_one.credit_rest
 
                     # 测试时都返回
+                    if credit_one.credit_rest == 0:
+                        continue
                     credit.append({"et": credit_one.expire_time, "id": credit_one.identity,
                                    "qu": credit_one.credit_rest})
                 # 消费阶段的数据不返回
-                # if total == 0:
-                #     continue
+                if total == 0:
+                    continue
                 m = {"t": merchant_name, "l": merchant_logo, "a": total, "i": merchant_identity, "cr": credit}
                 r.append(m)
                 g_log.debug(m)
