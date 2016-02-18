@@ -19,7 +19,7 @@ from business import Business
 from flow import Flow
 from activity import Activity
 from voucher import Voucher
-
+from maintain import Maintain
 
 class Server():
     """
@@ -54,7 +54,8 @@ class Server():
         try:
             # url路由
             route = [(r"/account", Account), (r"/consumer", Consumer), (r"/merchant", Merchant), (r"/credit", Credit),
-                     (r"/business", Business), (r"/flow", Flow), (r"/activity", Activity), (r"/voucher", Voucher)]
+                     (r"/business", Business), (r"/flow", Flow), (r"/activity", Activity), (r"/voucher", Voucher),
+                     (r"/maintain", Maintain)]
             application = Application(route)
             application.listen(self.port)
 
