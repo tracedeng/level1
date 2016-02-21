@@ -20,8 +20,8 @@ class Maintain(Base):
         """
         try:
             features_handle = {"version": self.version_report,
-                               "merchant_retrieve": self.merchant_retrieve_maintain,
-                               "confirm": self.confirm_maintain,
+                               "boot": self.boot_report,
+                               "active": self.active_report,
                                "feedback": self.feed_back}
             self.mode = self.get_argument("type")
             g_log.debug("[maintain.%s.request]", self.mode)
@@ -54,8 +54,8 @@ class Maintain(Base):
                 self.write(json.dumps({"c": 1090003, "m": "exception"}))
             else:
                 features_response = {"version": self.version_report_response,
-                                     "merchant_retrieve": self.merchant_retrieve_maintain_response,
-                                     "confirm": self.confirm_maintain_response,
+                                     "boot": self.boot_report_response,
+                                     "active": self.active_report_response,
                                      "feedback": self.feed_back_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
@@ -133,31 +133,30 @@ class Maintain(Base):
             g_log.debug("version report failed, %s:%s", code, message)
             return 1090101, message
 
-    def merchant_retrieve_maintain(self):
+    def boot_report(self):
         """
-        商家读取优惠券列表
+        app启动上报
         :return:
         """
         # 解析post参数
-        numbers = self.get_argument("numbers")
-        session_key = self.get_argument("session_key", "")
-        merchant_identity = self.get_argument("merchant", "")
+        # numbers = self.get_argument("numbers")
+        # session_key = self.get_argument("session_key", "")
+        version = self.get_argument("version", "")
 
         # 组请求包
         request = common_pb2.Request()
-        request.head.cmd = 802
+        request.head.cmd = 902
         request.head.seq = 2
-        request.head.numbers = numbers
-        request.head.session_key = session_key
+        # request.head.numbers = numbers
+        # request.head.session_key = session_key
 
-        body = request.merchant_retrieve_maintain_request
-        body.numbers = numbers
-        body.merchant_identity = merchant_identity
+        body = request.boot_report_request
+        body.version = version
 
         # 请求逻辑层
         self.send_to_level2(request)
 
-    def merchant_retrieve_maintain_response(self, response):
+    def boot_report_response(self, response):
         """
         逻辑层返回请求后处理
         :param response: pb格式回包
@@ -166,20 +165,13 @@ class Maintain(Base):
         code = head.code
         message = head.message
         if 1 == code:
-            g_log.debug("merchant retrieve maintain success")
-            body = response.merchant_retrieve_maintain_response
-            r = []
-            for maintain_one in body.maintains:
-                maintain = {"aid": maintain_one.activity_identity, "id": maintain_one.identity, "used": maintain_one.used,
-                           "ct": maintain_one.create_time, "et": maintain_one.expire_time,
-                           "ti": maintain_one.activity_title}
-                r.append(maintain)
-            return 1, r
+            g_log.debug("boot report success")
+            return 1, "yes"
         else:
-            g_log.debug("retrieve maintain failed, %s:%s", code, message)
+            g_log.debug("boot report failed, %s:%s", code, message)
             return 1090201, message
 
-    def confirm_maintain(self):
+    def active_report(self):
         """
         商家确认优惠券
         :return:
@@ -193,7 +185,7 @@ class Maintain(Base):
 
         # 组请求包
         request = common_pb2.Request()
-        request.head.cmd = 803
+        request.head.cmd = 903
         request.head.seq = 2
         request.head.numbers = manager
         request.head.session_key = session_key
@@ -207,7 +199,7 @@ class Maintain(Base):
         # 请求逻辑层
         self.send_to_level2(request)
 
-    def confirm_maintain_response(self, response):
+    def active_report_response(self, response):
         """
         逻辑层返回请求后处理
         :param response: pb格式回包
@@ -216,10 +208,10 @@ class Maintain(Base):
         code = head.code
         message = head.message
         if 1 == code:
-            g_log.debug("confirm maintain success")
+            g_log.debug("active report success")
             return 1, "yes"
         else:
-            g_log.debug("confirm maintain failed, %s:%s", code, message)
+            g_log.debug("active report failed, %s:%s", code, message)
             return 1090301, message
 
     def feed_back(self):
