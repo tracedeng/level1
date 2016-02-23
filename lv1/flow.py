@@ -141,12 +141,12 @@ class Flow(Base):
                 issued = material.issued
                 interchange_in = material.interchange_in
                 interchange_out = material.interchange_out
-                interchange_consumption = material.interchange_consumption
-                settlement = material.settlement
+                consumption = material.consumption
+                balance = material.balance
 
                 m = {"t": merchant_name, "l": merchant_logo, "i": merchant_identity, "up": upper_bound, "is": issued,
-                     "mi": may_issued, "in": interchange_in, "out": interchange_out, "ic": interchange_consumption,
-                     "se": settlement}
+                     "mi": may_issued, "in": interchange_in, "out": interchange_out, "co": consumption,
+                     "bal": balance}
                 # g_log.debug(m)
                 r.append(m)
             return 1, r
