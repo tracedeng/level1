@@ -498,7 +498,7 @@ class Credit(Base):
                 # merchant_identity = aggressive_credit_one.merchant.identity
                 total = 0
                 for credit_one in aggressive_credit_one.credit:
-                    if credit_one.exchanged == 1:
+                    if credit_one.exchanged == 1 and credit_one.credit_rest > 0:
                         total += credit_one.credit_rest
                         credit = {"qu": credit_one.credit_rest, "et": credit_one.expire_time, "cid": credit_one.identity}
                         r.append(credit)
@@ -591,6 +591,9 @@ class Credit(Base):
             # level2返回1为成功，其它认为失败
             g_log.debug("confirm apply credit success")
             return 1, "yes"
+        elif 40322 == code:
+            g_log.debug("apply credit exceed upper bound")
+            return 1, "exceed"
         else:
             g_log.debug("confirm apply credit failed, %s:%s", code, message)
             return 1040401, message

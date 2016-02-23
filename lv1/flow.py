@@ -19,7 +19,9 @@ class Flow(Base):
         :return:
         """
         try:
-            features_handle = {"retrieve": self.retrieve_credit_flow, "settlement": self.merchant_settlement}
+            features_handle = {"retrieve": self.retrieve_credit_flow, "settlement": self.merchant_settlement,
+                               "recharge": self.merchant_recharge, "balance_record": self.retrieve_balance_record}
+
             self.mode = self.get_argument("type")
             g_log.debug("[flow.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -49,7 +51,9 @@ class Flow(Base):
                 self.write(json.dumps({"c": 1060003, "m": "exception"}))
             else:
                 features_response = {"retrieve": self.retrieve_credit_flow_response,
-                                     "settlement": self.merchant_settlement_response}
+                                     "settlement": self.merchant_settlement_response,
+                                     "recharge": self.merchant_recharge_response,
+                                     "balance_record": self.retrieve_balance_record_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
                     self.write(json.dumps({"c": self.code, "r": self.message}))
@@ -188,4 +192,98 @@ class Flow(Base):
             return 1, body.settlement
         else:
             g_log.debug("merchant settlement failed, %s:%s", code, message)
-            return 1040601, message
+            return 1060601, message
+
+    def merchant_recharge(self):
+        """
+        商家充值
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        money = self.get_argument("money", "0")
+        merchant_identity = self.get_argument("merchant", "")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 503
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.merchant_recharge_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+        body.money = int(money)
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def merchant_recharge_response(self, response):
+        """
+        逻辑层返回登录请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("recharge  success")
+            return 1, "yes"
+        else:
+            g_log.debug("recharge failed, %s:%s", code, message)
+            return 1060301, message
+
+    def retrieve_balance_record(self):
+        """
+        商家更新消费兑换积分比例
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        merchant_identity = self.get_argument("merchant", "")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 505
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.merchant_balance_record_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def retrieve_balance_record_response(self, response):
+        """
+        逻辑层返回登录请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("retrieve balance record success")
+            body = response.merchant_balance_record_response
+            balance_record = body.balance_record
+            g_log.debug("consumer has %d merchant", len(balance_record))
+            r = []
+            for balance_record_one in balance_record:
+                merchant_name = balance_record_one.merchant.name
+                merchant_logo = balance_record_one.merchant.logo
+                merchant_identity = balance_record_one.merchant.identity
+                record = []
+                for record_one in balance_record_one.aggressive_record:
+                    record.append({"mo": record_one.money, "ti": record_one.time, "op": record_one.operator})
+                m = {"t": merchant_name, "l": merchant_logo, "i": merchant_identity, "a": record}
+                # g_log.debug(m)
+                r.append(m)
+            return 1, r
+        else:
+            g_log.debug("retrieve balance record failed, %s:%s", code, message)
+            return 1060501, message

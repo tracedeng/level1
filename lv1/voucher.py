@@ -129,10 +129,11 @@ class Voucher(Base):
             for merchant_voucher_one in body.merchant_voucher:
                 merchant = merchant_voucher_one.merchant
                 name = merchant.name
+                logo = merchant.logo
                 for voucher_one in merchant_voucher_one.vouchers:
                     voucher = {"aid": voucher_one.activity_identity, "id": voucher_one.identity, "na": name,
                                "used": voucher_one.used, "ct": voucher_one.create_time, "et": voucher_one.expire_time,
-                               "ti": voucher_one.activity_title}
+                               "ti": voucher_one.activity_title, "logo": logo}
                     r.append(voucher)
             return 1, r
         else:
