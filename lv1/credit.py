@@ -32,7 +32,7 @@ class Credit(Base):
                                "apply_list_m": self.merchant_fetch_apply_credit,
                                "credit_detail": self.consumer_fetch_credit_detail,
                                "confirm": self.confirm_apply_credit, "refuse": self.refuse_apply_credit,
-                               "interchange": self.credit_interchange}
+                               "interchange": self.credit_interchange, "allow_in": self.check_interchange_in}
             self.mode = self.get_argument("type")
             g_log.debug("[credit.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -673,3 +673,36 @@ class Credit(Base):
         else:
             g_log.debug("credit interchange failed, %s:%s", code, message)
             return 1040601, message
+
+    def check_interchange_in(self):
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        merchant = self.get_argument("merchant")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 311
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.allow_interchange_in_request
+        body.numbers = numbers
+        body.merchant = merchant
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def check_interchange_in_response(self, response):
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("check interchange in success")
+            body = response.allow_interchange_in_response
+            return 1, body.allow
+        else:
+            g_log.debug("check interchange in failed, %s:%s", code, message)
+            return 1040701, message
