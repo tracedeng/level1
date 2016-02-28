@@ -184,11 +184,14 @@ class Activity(Base):
         if 1 == code:
             g_log.debug("retrieve activity success")
             body = response.activity_retrieve_response
-            r = []
+
+            r = {"mn": body.merchant.name}
+            activities = []
             for activity_one in body.materials:
                 activity = {"t": activity_one.title, "in": activity_one.introduce, "cr": activity_one.credit,
                             "po": activity_one.poster, "et": activity_one.expire_time, "id": activity_one.identity}
-                r.append(activity)
+                activities.append(activity)
+            r["act"] = activities
             return 1, r
         else:
             g_log.debug("retrieve activity failed, %s:%s", code, message)
@@ -331,9 +334,11 @@ class Activity(Base):
             body = response.consumer_retrieve_activity_response
             r = []
             for activity_one in body.materials:
+                merchant = activity_one.merchant
                 activity = {"t": activity_one.title, "in": activity_one.introduce, "cr": activity_one.credit,
                             "po": activity_one.poster, "et": activity_one.expire_time, "id": activity_one.identity,
-                            "mid": activity_one.merchant_identity, "na": activity_one.name}
+                            "mna": merchant.name, "mlo": merchant.location, "mco": merchant.contact_numbers,
+                            "vol": activity_one.volume}
                 r.append(activity)
             return 1, r
         else:
