@@ -11,6 +11,10 @@ from level1_base import Base, InvalidArgumentError
 
 
 class Merchant(Base):
+    def __init__(self, *args, **kwargs):
+        Base.__init__(self, *args, **kwargs)
+        self.merchant_exclude = ""
+
     @asynchronous
     def post(self, *args, **kwargs):
         """
@@ -26,7 +30,8 @@ class Merchant(Base):
                                "delete_manager": self.merchant_delete_manager,
                                "delegate": self.merchant_delegate_manager,
                                "upload_token": self.upload_token,
-                               "verified_merchant": self.retrieve_verified_merchant}
+                               "verified_merchant": self.retrieve_verified_merchant,
+                               "exchange_in_merchant": self.retrieve_exchange_in_merchant}
             self.mode = self.get_argument("type")
             g_log.debug("[merchant.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -69,7 +74,8 @@ class Merchant(Base):
                                      "delete_manager": self.merchant_delete_manager_response,
                                      "delegate": self.merchant_delegate_manager_response,
                                      "upload_token": self.upload_token_response,
-                                     "verified_merchant": self.retrieve_verified_merchant_response}
+                                     "verified_merchant": self.retrieve_verified_merchant_response,
+                                     "exchange_in_merchant": self.retrieve_exchange_in_merchant_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
                     self.write(json.dumps({"c": self.code, "r": self.message}))
@@ -128,6 +134,7 @@ class Merchant(Base):
         country = self.get_argument("country", "")
         location = self.get_argument("location", "")
         contract = self.get_argument("contract", "")
+        ratio = self.get_argument("ratio", 1)
 
         # 组请求包
         request = common_pb2.Request()
@@ -152,6 +159,7 @@ class Merchant(Base):
         material.country = country
         material.location = location
         material.contract = contract
+        body.ratio = int(ratio)
 
         # 请求逻辑层
         self.send_to_level2(request)
@@ -558,7 +566,7 @@ class Merchant(Base):
             return 1, r
         else:
             g_log.debug("get upload token failed, %s:%s", code, message)
-            return 1031001, message
+            return 1032001, message
 
     def retrieve_verified_merchant(self):
         """
@@ -569,6 +577,7 @@ class Merchant(Base):
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
         verified = self.get_argument("verified", "both")
+        self.merchant_exclude = self.get_argument("merchant_exclude", "")
 
         # 组请求包
         request = common_pb2.Request()
@@ -598,13 +607,63 @@ class Merchant(Base):
             # materials = body.materials
             r = []
             for material in body.materials:
-                merchant = {"n": material.name, "ne": material.name_en, "con": material.contact_numbers,
-                            "em": material.email, "logo": material.logo, "in": material.introduce,
-                            "co": material.country, "v": material.verified, "lo": material.location,
-                            "qr": material.qrcode, "fou": material.numbers, "ctr": material.contract,
-                            "lon": material.longitude, "lat": material.latitude, "id": material.identity}
-                r.append(merchant)
+                if self.merchant_exclude != material.identity:
+                    merchant = {"n": material.name, "ne": material.name_en, "con": material.contact_numbers,
+                                "em": material.email, "logo": material.logo, "in": material.introduce,
+                                "co": material.country, "v": material.verified, "lo": material.location,
+                                "qr": material.qrcode, "fou": material.numbers, "ctr": material.contract,
+                                "lon": material.longitude, "lat": material.latitude, "id": material.identity}
+                    r.append(merchant)
             return 1, r
         else:
             g_log.debug("retrieve merchant failed, %s:%s", code, message)
-            return 1030201, message
+            return 1031001, message
+
+    def retrieve_exchange_in_merchant(self):
+        """
+        读取允许积分导入的商家列表
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        session_key = self.get_argument("session_key", "")
+        self.merchant_exclude = self.get_argument("merchant_exclude", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 211
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.retrieve_exchange_in_merchant_request
+        body.numbers = numbers
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def retrieve_exchange_in_merchant_response(self, response):
+        """
+        逻辑层返回请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("retrieve exchange in merchant success")
+            body = response.retrieve_exchange_in_merchant_response
+            # materials = body.materials
+            r = []
+            for material in body.materials:
+                if self.merchant_exclude != material.identity:
+                    merchant = {"n": material.name, "ne": material.name_en, "con": material.contact_numbers,
+                                "em": material.email, "logo": material.logo, "in": material.introduce,
+                                "co": material.country, "v": material.verified, "lo": material.location,
+                                "qr": material.qrcode, "fou": material.numbers, "ctr": material.contract,
+                                "lon": material.longitude, "lat": material.latitude, "id": material.identity}
+                    r.append(merchant)
+            return 1, r
+        else:
+            g_log.debug("retrieve exchange in merchant failed, %s:%s", code, message)
+            return 1031101, message

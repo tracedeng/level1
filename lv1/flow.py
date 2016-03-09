@@ -19,7 +19,7 @@ class Flow(Base):
         :return:
         """
         try:
-            features_handle = {"retrieve": self.retrieve_credit_flow, "settlement": self.merchant_settlement,
+            features_handle = {"retrieve": self.retrieve_credit_flow, "allow": self.merchant_allow_exchange_in,
                                "recharge": self.merchant_recharge, "balance_record": self.retrieve_balance_record}
 
             self.mode = self.get_argument("type")
@@ -51,7 +51,7 @@ class Flow(Base):
                 self.write(json.dumps({"c": 1060003, "m": "exception"}))
             else:
                 features_response = {"retrieve": self.retrieve_credit_flow_response,
-                                     "settlement": self.merchant_settlement_response,
+                                     "allow": self.merchant_allow_exchange_in_response,
                                      "recharge": self.merchant_recharge_response,
                                      "balance_record": self.retrieve_balance_record_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
@@ -155,16 +155,15 @@ class Flow(Base):
             g_log.debug("retrieve credit flow failed, %s:%s", code, message)
             return 1060101, message
 
-    def merchant_settlement(self):
+    def merchant_allow_exchange_in(self):
         """
-        商家结算
+        商家允许积分转入
         :return:
         """
         # 解析post参数
         numbers = self.get_argument("numbers")
         merchant_identity = self.get_argument("merchant", "")
         session_key = self.get_argument("session_key", "")
-        exec_settlement = self.get_argument("exec_settlement", "0")
 
         # 组请求包
         request = common_pb2.Request()
@@ -173,26 +172,25 @@ class Flow(Base):
         request.head.numbers = numbers
         request.head.session_key = session_key
 
-        body = request.merchant_settlement_request
+        body = request.merchant_allow_exchange_in_request
         body.numbers = numbers
         body.merchant_identity = merchant_identity
-        body.exec_settlement = int(exec_settlement)
 
         # 请求逻辑层
         self.send_to_level2(request)
 
-    def merchant_settlement_response(self, response):
+    def merchant_allow_exchange_in_response(self, response):
         head = response.head
         code = head.code
         message = head.message
         if 1 == code:
             # level2返回1为成功，其它认为失败
-            g_log.debug("merchant settlement success")
-            body = response.merchant_settlement_response
-            return 1, body.settlement
+            g_log.debug("merchant allow exchange in success")
+            body = response.merchant_allow_exchange_in_response
+            return 1, body.allow
         else:
-            g_log.debug("merchant settlement failed, %s:%s", code, message)
-            return 1060601, message
+            g_log.debug("merchant allow exchange in failed, %s:%s", code, message)
+            return 1060201, message
 
     def merchant_recharge(self):
         """
@@ -279,7 +277,8 @@ class Flow(Base):
                 merchant_identity = balance_record_one.merchant.identity
                 record = []
                 for record_one in balance_record_one.aggressive_record:
-                    record.append({"mo": record_one.money, "ti": record_one.time, "op": record_one.operator})
+                    record.append({"mo": record_one.money, "ti": record_one.time, "op": record_one.operator,
+                                   "di": record_one.direction})
                 m = {"t": merchant_name, "l": merchant_logo, "i": merchant_identity, "a": record}
                 # g_log.debug(m)
                 r.append(m)

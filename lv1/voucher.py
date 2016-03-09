@@ -133,7 +133,8 @@ class Voucher(Base):
                 for voucher_one in merchant_voucher_one.vouchers:
                     voucher = {"aid": voucher_one.activity_identity, "id": voucher_one.identity, "na": name,
                                "used": voucher_one.used, "ct": voucher_one.create_time, "et": voucher_one.expire_time,
-                               "ti": voucher_one.activity_title, "logo": logo}
+                               "ti": voucher_one.activity_title, "logo": logo, "mid": voucher_one.merchant_identity,
+                               "num": voucher_one.numbers}
                     r.append(voucher)
             return 1, r
         else:
@@ -197,6 +198,8 @@ class Voucher(Base):
         session_key = self.get_argument("session_key", "")
         merchant_identity = self.get_argument("merchant", "")
         voucher_identity = self.get_argument("voucher", "")
+        activity_identity = self.get_argument("activity", "")
+        exec_confirm = self.get_argument("exec_confirm", "0")
 
         # 组请求包
         request = common_pb2.Request()
@@ -210,6 +213,8 @@ class Voucher(Base):
         body.merchant_identity = merchant_identity
         body.voucher_identity = voucher_identity
         body.c_numbers = numbers
+        body.activity_identity = activity_identity
+        body.exec_confirm = int(exec_confirm)
 
         # 请求逻辑层
         self.send_to_level2(request)
@@ -224,7 +229,9 @@ class Voucher(Base):
         message = head.message
         if 1 == code:
             g_log.debug("confirm voucher success")
-            return 1, "yes"
+            body = response.confirm_voucher_response
+
+            return 1, body.state
         else:
             g_log.debug("confirm voucher failed, %s:%s", code, message)
             return 1080301, message

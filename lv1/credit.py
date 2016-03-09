@@ -32,7 +32,8 @@ class Credit(Base):
                                "apply_list_m": self.merchant_fetch_apply_credit,
                                "credit_detail": self.consumer_fetch_credit_detail,
                                "confirm": self.confirm_apply_credit, "refuse": self.refuse_apply_credit,
-                               "interchange": self.credit_interchange, "allow_in": self.check_interchange_in}
+                               "interchange": self.credit_interchange, "allow_in": self.check_interchange_in,
+                               "allow_out_credit": self.consumer_fetch_allow_out_credit}
             self.mode = self.get_argument("type")
             g_log.debug("[credit.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
@@ -71,7 +72,8 @@ class Credit(Base):
                                      "credit_detail": self.consumer_fetch_credit_detail_response,
                                      "confirm": self.confirm_apply_credit_response,
                                      "refuse": self.refuse_apply_credit_response,
-                                     "interchange": self.credit_interchange_response}
+                                     "interchange": self.credit_interchange_response,
+                                     "allow_out_credit": self.consumer_fetch_allow_out_credit_response}
 
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
                 if self.code == 1:
@@ -706,3 +708,74 @@ class Credit(Base):
         else:
             g_log.debug("check interchange in failed, %s:%s", code, message)
             return 1040701, message
+
+    def consumer_fetch_allow_out_credit(self):
+        """
+        获取用户拥有的所有允许转出积分列表
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        session_key = self.get_argument("session_key", "")
+        self.merchant_exclude = self.get_argument("merchant", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 312
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.allow_out_credit_retrieve_request
+        body.numbers = numbers
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def consumer_fetch_allow_out_credit_response(self, response):
+        """
+        逻辑层返回后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            # level2返回1为成功，其它认为失败
+            g_log.debug("consumer fetch all allow out credit detail success")
+            body = response.allow_out_credit_retrieve_response
+            aggressive_credit = body.consumer_credit.aggressive_credit
+            g_log.debug("consumer has %d merchant", len(aggressive_credit))
+            r = []
+            for aggressive_credit_one in aggressive_credit:
+                # 未认证的商家不支持互换
+                # if "no" == aggressive_credit_one.merchant.verified:
+                #     continue
+                if self.merchant_exclude == aggressive_credit_one.merchant.identity:
+                    continue
+                merchant_name = aggressive_credit_one.merchant.name
+                merchant_logo = aggressive_credit_one.merchant.logo
+                merchant_identity = aggressive_credit_one.merchant.identity
+                total = 0
+                credit = []
+                for credit_one in aggressive_credit_one.credit:
+                    if credit_one.exchanged == 1:
+                        total += credit_one.credit_rest
+                    else:
+                        continue
+
+                    # 测试时都返回
+                    if credit_one.credit_rest == 0:
+                        continue
+                    credit.append({"et": credit_one.expire_time, "id": credit_one.identity,
+                                   "qu": credit_one.credit_rest})
+                # 消费阶段的数据不返回
+                if total == 0:
+                    continue
+                m = {"t": merchant_name, "l": merchant_logo, "a": total, "i": merchant_identity, "cr": credit}
+                r.append(m)
+                g_log.debug(m)
+            return 1, r
+        else:
+            g_log.debug("consumer fetch all credit failed, %s:%s", code, message)
+            return 1040801, message
