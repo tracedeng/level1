@@ -338,7 +338,7 @@ class Activity(Base):
                 activity = {"t": activity_one.title, "in": activity_one.introduce, "cr": activity_one.credit,
                             "po": activity_one.poster, "et": activity_one.expire_time, "id": activity_one.identity,
                             "mna": merchant.name, "mlo": merchant.location, "mco": merchant.contact_numbers,
-                            "vol": activity_one.volume}
+                            "vol": activity_one.volume, "mid": merchant.identity}
                 r.append(activity)
             return 1, r
         else:
