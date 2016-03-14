@@ -3,7 +3,7 @@ __author__ = 'tracedeng'
 
 # 因为level1和level2很多文件重名出错，所以不在level2中import
 import sys
-sys.path.remove("/Users/tracedeng/PycharmProjects/testproject/calculus/lv2")
+#sys.path.remove("/Users/tracedeng/PycharmProjects/testproject/calculus/lv2")
 
 import ConfigParser
 from tornado.ioloop import IOLoop
@@ -27,7 +27,7 @@ class Server():
     """
     PORT = 8000
 
-    def __init__(self, conf_path="server.conf"):
+    def __init__(self, conf_path="./coframe/server.conf"):
         """
         :param conf_path: 配置文件路径
         :return:

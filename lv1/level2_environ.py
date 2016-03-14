@@ -17,7 +17,7 @@ class Level2Environ():
         :param conf_path: 配置文件路径
         :return:
         """
-        conf_path = "server.conf"
+        conf_path = "./coframe/server.conf"
         config = ConfigParser.ConfigParser()
         config.read(conf_path)
         self.config = config

@@ -10,7 +10,7 @@ from singleton import singleton
 
 @singleton
 class RedisConnection():
-    CONFPATH = "server.conf"   # 配置文件路径
+    CONFPATH = "./coframe/server.conf"   # 配置文件路径
 
     def __init__(self):
         """
