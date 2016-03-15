@@ -177,24 +177,20 @@ class Maintain(Base):
         :return:
         """
         # 解析post参数
-        manager = self.get_argument("numbers")
-        numbers = self.get_argument("consumer")
+        numbers = self.get_argument("numbers")
+        mode = self.get_argument("mode")
         session_key = self.get_argument("session_key", "")
-        merchant_identity = self.get_argument("merchant", "")
-        maintain_identity = self.get_argument("maintain", "")
 
         # 组请求包
         request = common_pb2.Request()
         request.head.cmd = 903
         request.head.seq = 2
-        request.head.numbers = manager
+        request.head.numbers = numbers
         request.head.session_key = session_key
 
-        body = request.confirm_maintain_request
-        body.numbers = manager
-        body.merchant_identity = merchant_identity
-        body.maintain_identity = maintain_identity
-        body.c_numbers = numbers
+        body = request.active_report_request
+        body.numbers = numbers
+        body.mode = mode
 
         # 请求逻辑层
         self.send_to_level2(request)
