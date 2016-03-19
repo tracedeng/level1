@@ -206,7 +206,8 @@ class Credit(Base):
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
                     else:
-                        has_un_exchanged = 1
+                        if credit_one.type != "r":
+                            has_un_exchanged = 1
                 if total == 0 and has_un_exchanged == 0:
                     # 积分券全部消费完毕并且没有未兑换消费，不显示
                     continue
@@ -272,6 +273,9 @@ class Credit(Base):
                         if credit_one.credit_rest == 0:
                             continue
                         total += credit_one.credit_rest
+                    elif credit_one.type == "r":
+                        # 被拒绝的不展示
+                        continue
                     credit_list.append(credit)
                 merchant["a"] = total
                 r = {"m": merchant, "c": credit_list}
@@ -449,6 +453,8 @@ class Credit(Base):
                 for credit_one in aggressive_credit_one.credit:
                     if credit_one.exchanged == 1:
                         total += credit_one.credit_rest
+                if total == 0:
+                    continue
                 credit = {"nu": numbers, "ni": nickname, "ava": avatar, "cid": identity, "a": total}
                 r.append(credit)
             return 1, r
