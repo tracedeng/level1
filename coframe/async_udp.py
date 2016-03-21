@@ -64,7 +64,7 @@ class AsyncUDPClient(object):
         self.max_clients = 10
         self.queue = collections.deque()
         self.active = {}
-        self.max_buffer_size = 81920
+        self.max_buffer_size = 65536
 
     def fetch(self, request, callback, **kwargs):
         callback = stack_context.wrap(callback)
