@@ -267,7 +267,7 @@ class Credit(Base):
                 credit_list = []
                 for credit_one in aggressive_credit_one.credit:
                     credit = {"i": credit_one.identity, "e": credit_one.exchanged, "am": credit_one.credit_rest,
-                              "ct": credit_one.exchange_time, "et": credit_one.exchange_time, "s": credit_one.sums}
+                              "ct": credit_one.exchange_time, "et": credit_one.expire_time, "s": credit_one.sums}
                     if credit_one.exchanged == 1:
                         # 已用完的积分不展示
                         if credit_one.credit_rest == 0:
