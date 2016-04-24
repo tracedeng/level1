@@ -306,6 +306,7 @@ class Activity(Base):
         # 解析post参数
         numbers = self.get_argument("numbers")
         session_key = self.get_argument("session_key", "")
+        mark = self.get_argument("mark", "")
         # TODO 经纬度
 
         # 组请求包
@@ -317,6 +318,7 @@ class Activity(Base):
 
         body = request.consumer_retrieve_activity_request
         body.numbers = numbers
+        body.mark = mark 
 
         # 请求逻辑层
         self.send_to_level2(request)
@@ -338,7 +340,7 @@ class Activity(Base):
                 activity = {"t": activity_one.title, "in": activity_one.introduce, "cr": activity_one.credit,
                             "po": activity_one.poster, "et": activity_one.expire_time, "id": activity_one.identity,
                             "mna": merchant.name, "mlo": merchant.location, "mco": merchant.contact_numbers,
-                            "mid": merchant.identity, "vol": activity_one.volume}
+                            "mid": merchant.identity, "vol": activity_one.volume, "ct": activity_one.create_time}
                 r.append(activity)
             return 1, r
         else:
