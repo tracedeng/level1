@@ -3,9 +3,11 @@ __author__ = 'tracedeng'
 
 from tornado.web import MissingArgumentError, asynchronous
 import json
+from urllib import quote
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA
 from Crypto.Signature import PKCS1_v1_5
+from OpenSSL.crypto import load_privatekey, FILETYPE_PEM, sign
 import base64
 import common_pb2
 import log
@@ -431,10 +433,18 @@ class Flow(Base):
             g_log.debug("query recharge trade no success")
             body = response.merchant_recharge_trade_no_response
             trade_no = body.trade_no
-            with open('./rsa_private_key_pkcs8.pem', 'r') as f:
-                key = f.read()      # pkcs8私钥
-                g_log.debug(key)
-            return 1, {"trade_no": trade_no, "key": key}
+            # with open('./rsa_private_key_pkcs8.pem', 'r') as f:
+            #     key = f.read()      # pkcs8私钥
+            #     g_log.debug(key)
+            money = self.get_argument("money", "0")
+            # g_log.debug(money)
+            order = {"partner": "\"2088221780225801\"", "seller_id": "\"biiyooit@qq.com\"", "out_trade_no": "\"%s\"" % trade_no,
+                     "subject": "\"charge\"", "body": "\"charge\"", "total_fee": "\"%s\"" % money,
+                     "notify_url": "\"http://www.weijifen.me:8000/flow\"", "service": "\"mobile.securitypay.pay\"",
+                     "payment_type": "\"1\"", "_input_charset": "\"utf-8\"", "it_b_pay": "\"30m\""}
+            g_log.debug(order)
+            sign = rsa_order(order)
+            return 1, {"trade_no": trade_no, "sign": sign}
         else:
             g_log.debug("query trade no failed, %s:%s", code, message)
             return 1060701, message
@@ -538,3 +548,29 @@ class Flow(Base):
         else:
             g_log.debug("deal alipay async notify failed, %s:%s", code, message)
             return 1060801, message
+
+
+def rsa_order(order):
+    """
+    订单rsa加密
+    :return:
+    """
+    # order = {"partner": "2088221780225801", "seller_id": "biiyooit@qq.com", "out_trade_no": trade_no,
+    #          "subject": "charge", "body": "charge", "total_fee": str(money),
+    #          "notify_url": "http://www.weijifen.me:8000/flow", "service": "mobile.securitypay.pay",
+    #          "payment_type": "1", "_input_charset": "utf-8", "it_b_pay": "30m"}
+
+    # g_log.debug(order)
+    plain = ""
+    for key in sorted(order):
+        # g_log.debug("%s=%s", key, order[key])
+        plain += "&%s=%s" % (key, order[key])
+        # g_log.debug(plain)
+
+    # g_log.debug(plain[1:])
+    # cipher = PKCS1_v1_5_ENCRYPT.new(RSA.importKey(open('./rsa_private_key_pkcs8.pem', 'r').read()))
+    # cipher = base64.b64encode(cipher.encrypt(plain))
+    # return base64.b64encode(cipher.encrypt(plain[1:]))
+    key = load_privatekey(FILETYPE_PEM, open("rsa_private_key_pkcs8.pem").read())
+    cipher = sign(key, plain[1:], 'sha1')
+    return quote(base64.b64encode(cipher))
