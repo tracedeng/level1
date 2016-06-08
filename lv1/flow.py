@@ -3,6 +3,10 @@ __author__ = 'tracedeng'
 
 from tornado.web import MissingArgumentError, asynchronous
 import json
+from Crypto.PublicKey import RSA
+from Crypto.Hash import SHA
+from Crypto.Signature import PKCS1_v1_5
+import base64
 import common_pb2
 import log
 g_log = log.WrapperLog('stream', name=__name__, level=log.DEBUG).log  # 启动日志功能
@@ -20,9 +24,15 @@ class Flow(Base):
         """
         try:
             features_handle = {"retrieve": self.retrieve_credit_flow, "allow": self.merchant_allow_exchange_in,
-                               "recharge": self.merchant_recharge, "balance_record": self.retrieve_balance_record}
-
+                               "recharge": self.merchant_recharge, "withdrawals": self.merchant_withdrawals,
+                               "balance_record": self.retrieve_balance_record,
+                               "balance": self.retrieve_merchant_balance, "trade_no": self.retrieve_trade_no,
+                               "notify": self.alipay_async_notify}
             self.mode = self.get_argument("type")
+            # g_log.debug("http://%s%s?%s", self.request.host, self.request.path, self.request.arguments)
+            if self.mode == "" and self.get_argument("seller_email") == "biiyooit@qq.com":
+                g_log.debug("async notify from alipay")
+                self.mode = "notify"
             g_log.debug("[flow.%s.request]", self.mode)
             features_handle.get(self.mode, self.dummy_command)()
         except MissingArgumentError as e:
@@ -53,15 +63,25 @@ class Flow(Base):
                 features_response = {"retrieve": self.retrieve_credit_flow_response,
                                      "allow": self.merchant_allow_exchange_in_response,
                                      "recharge": self.merchant_recharge_response,
-                                     "balance_record": self.retrieve_balance_record_response}
+                                     "withdrawals": self.merchant_withdrawals_response,
+                                     "balance_record": self.retrieve_balance_record_response,
+                                     "balance": self.retrieve_merchant_balance_response,
+                                     "trade_no": self.retrieve_trade_no_response,
+                                     "notify": self.alipay_async_notify_response}
                 self.code, self.message = features_response.get(self.mode, self.dummy_command)(self.response)
-                if self.code == 1:
-                    self.write(json.dumps({"c": self.code, "r": self.message}))
+                if self.mode == "notify":
+                    self.write("success")
                 else:
-                    self.write(json.dumps({"c": self.code, "m": self.message}))
+                    if self.code == 1:
+                        self.write(json.dumps({"c": self.code, "r": self.message}))
+                    else:
+                        self.write(json.dumps({"c": self.code, "m": self.message}))
         except Exception as e:
             g_log.error("<%s> %s", e.__class__, e)
-            self.write(json.dumps({"c": 1060004, "m": "exception"}))
+            if self.mode == "notify":
+                self.write("success")
+            else:
+                self.write(json.dumps({"c": 1060004, "m": "exception"}))
         g_log.debug("[flow.%s.response]", self.mode)
         self.finish()
 
@@ -202,6 +222,7 @@ class Flow(Base):
         money = self.get_argument("money", "0")
         merchant_identity = self.get_argument("merchant", "")
         session_key = self.get_argument("session_key", "")
+        trade_no = self.get_argument("trade_no", "")
 
         # 组请求包
         request = common_pb2.Request()
@@ -214,6 +235,7 @@ class Flow(Base):
         body.numbers = numbers
         body.merchant_identity = merchant_identity
         body.money = int(money)
+        body.trade_no = trade_no
 
         # 请求逻辑层
         self.send_to_level2(request)
@@ -232,6 +254,47 @@ class Flow(Base):
         else:
             g_log.debug("recharge failed, %s:%s", code, message)
             return 1060301, message
+
+    def merchant_withdrawals(self):
+        """
+        商家提现
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        money = self.get_argument("money", "0")
+        merchant_identity = self.get_argument("merchant", "")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 504
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.merchant_withdrawals_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+        body.money = int(money)
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def merchant_withdrawals_response(self, response):
+        """
+        逻辑层返回登录请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("withdrawals success")
+            return 1, "yes"
+        else:
+            g_log.debug("withdrawals failed, %s:%s", code, message)
+            return 1060401, message
 
     def retrieve_balance_record(self):
         """
@@ -286,3 +349,192 @@ class Flow(Base):
         else:
             g_log.debug("retrieve balance record failed, %s:%s", code, message)
             return 1060501, message
+
+    def retrieve_merchant_balance(self):
+        """
+        读取商家帐户余额
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        merchant_identity = self.get_argument("merchant", "")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 506
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.merchant_balance_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def retrieve_merchant_balance_response(self, response):
+        """
+        逻辑层返回登录请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("retrieve balance success")
+            body = response.merchant_balance_response
+            balance = body.balance
+            g_log.debug("merchant balance %d", balance)
+
+            return 1, balance
+        else:
+            g_log.debug("retrieve balance failed, %s:%s", code, message)
+            return 1060601, message
+
+    def retrieve_trade_no(self):
+        """
+        请求商家充值订单号
+        :return:
+        """
+        # 解析post参数
+        numbers = self.get_argument("numbers")
+        money = self.get_argument("money", "0")
+        merchant_identity = self.get_argument("merchant", "")
+        session_key = self.get_argument("session_key", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 507
+        request.head.seq = 2
+        request.head.numbers = numbers
+        request.head.session_key = session_key
+
+        body = request.merchant_recharge_trade_no_request
+        body.numbers = numbers
+        body.merchant_identity = merchant_identity
+        body.money = int(money)
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def retrieve_trade_no_response(self, response):
+        """
+        逻辑层返回登录请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("query recharge trade no success")
+            body = response.merchant_recharge_trade_no_response
+            trade_no = body.trade_no
+            with open('./rsa_private_key_pkcs8.pem', 'r') as f:
+                key = f.read()      # pkcs8私钥
+                g_log.debug(key)
+            return 1, {"trade_no": trade_no, "key": key}
+        else:
+            g_log.debug("query trade no failed, %s:%s", code, message)
+            return 1060701, message
+
+    def check_rsa_sign(self):
+        """
+        检查rsa签名
+        :return:True/有效，False/无效
+        """
+        try:
+            sign = self.get_argument("sign", "")
+
+            query = self.request.arguments
+            query.pop("sign")
+            query.pop("sign_type")
+            plain = ""
+            for key in sorted(query):
+                plain += "&%s=%s" % (key, query[key][0])
+            g_log.debug(plain)
+            verifier = PKCS1_v1_5.new(RSA.importKey(open('./rsa_alipay_public_key.pem', 'r').read()))
+            if verifier.verify(SHA.new(plain[1:]), base64.b64decode(sign)):
+                return True
+
+            return False
+        except Exception as e:
+            g_log.error("%s", e)
+            return False
+
+    def alipay_async_notify(self):
+        """
+        请求商家充值订单号
+        :return:
+        """
+        # 检查签名
+        sign_type = self.get_argument("sign_type", "RSA")
+        if sign_type.upper() != "RSA":
+            g_log.debug("check sign failed, invalid sign type %s", sign_type)
+            self.write("success")
+            self.finish()
+            return
+
+        if not self.check_rsa_sign():
+            g_log.debug("check notify sign failed")
+            self.write("success")
+            self.finish()
+            return
+
+        # 解析post参数
+        trade_status = self.get_argument("trade_status")
+        sign = self.get_argument("sign", "")
+        notify_type = self.get_argument("notify_type", "")
+        notify_id = self.get_argument("notify_id", "")
+        buyer_id = self.get_argument("buyer_id", "")
+        buyer_email = self.get_argument("buyer_email", "")
+        out_trade_no = self.get_argument("out_trade_no", "")
+        trade_no = self.get_argument("trade_no", "")
+        seller_email = self.get_argument("seller_email", "")
+        seller_id = self.get_argument("seller_id", "")
+        total_fee = self.get_argument("total_fee", "0")
+        notify_time = self.get_argument("notify_time", "")
+        gmt_create = self.get_argument("gmt_create", "")
+        gmt_payment = self.get_argument("gmt_payment", "")
+
+        # 组请求包
+        request = common_pb2.Request()
+        request.head.cmd = 508
+        request.head.seq = 2
+
+        body = request.alipay_async_notify_request
+        body.trade_status = trade_status
+        body.sign_type = sign_type
+        body.sign = sign
+        body.notify_type = notify_type
+        body.notify_id = notify_id
+        body.buyer_id = buyer_id
+        body.buyer_email = buyer_email
+        body.out_trade_no = out_trade_no
+        body.trade_no = trade_no
+        body.seller_email = seller_email
+        body.seller_id = seller_id
+        # body.total_fee = 1 if float(total_fee) < 1.0 else int(total_fee)
+        body.total_fee = int(float(total_fee))
+        body.notify_time = notify_time
+        body.gmt_create = gmt_create
+        body.gmt_payment = gmt_payment
+
+        # 请求逻辑层
+        self.send_to_level2(request)
+
+    def alipay_async_notify_response(self, response):
+        """
+        逻辑层返回登录请求后处理
+        :param response: pb格式回包
+        """
+        head = response.head
+        code = head.code
+        message = head.message
+        if 1 == code:
+            g_log.debug("deal alipay async notify success")
+            return 1, "yes"
+        else:
+            g_log.debug("deal alipay async notify failed, %s:%s", code, message)
+            return 1060801, message

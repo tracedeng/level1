@@ -272,7 +272,8 @@ class Account(Base):
         self.finish()
 
     def _verify_sms_code(self, numbers, sms_code):
-	return "match"
+        # MOD前端验证
+        return "match"
 
     def _verify_sms_code_redis(self, numbers, sms_code):
         # redis cache中验证短信验证码
